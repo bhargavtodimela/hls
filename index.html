@@ -1,0 +1,2170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Material Design Video Player</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Using Google Fonts for Material Icons for better consistency -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        :root {
+            /* Material Design 3 Dark Theme Colors (simplified for primary/secondary) */
+            --md-sys-color-primary: #D0BCFF; /* Light purple for accents */
+            --md-sys-color-on-primary: #4A009B;
+            --md-sys-color-primary-container: #4A009B;
+            --md-sys-color-on-primary-container: #EADDFF;
+
+            --md-sys-color-secondary: #CCC2DC; /* Light teal for secondary actions */
+            --md-sys-color-on-secondary: #332D41;
+            --md-sys-color-secondary-container: #4A4458;
+            --md-sys-color-on-secondary-container: #E8DEF8;
+
+            --md-sys-color-tertiary: #EFB8C8; /* Optional, for additional visual distinction */
+            --md-sys-color-on-tertiary: #492532;
+            --md-sys-color-tertiary-container: #633B48;
+            --md-sys-color-on-tertiary-container: #FFD8E4;
+
+            --md-sys-color-background: #1C1B1F; /* Dark background */
+            --md-sys-color-on-background: #E6E1E5;
+
+            --md-sys-color-surface: #1C1B1F; /* Dark surface for cards, controls */
+            --md-sys-color-on-surface: #E6E1E5;
+            --md-sys-color-surface-variant: #49454F; /* Lighter surface for alternatives */
+            --md-sys-color-on-surface-variant: #CAC4D0;
+
+            --md-sys-color-error: #F2B8B5;
+            --md-sys-color-on-error: #601410;
+            --md-sys-color-error-container: #8C1D18;
+            --md-sys-color-on-error-container: #F9DEDC;
+
+            --md-sys-color-outline: #938F99;
+            --md-sys-color-outline-variant: #49454F; /* For dividers, etc. */
+
+            --md-sys-color-inverse-surface: #E6E1E5;
+            --md-sys-color-inverse-on-surface: #313033;
+            --md-sys-color-inverse-primary: #6750A4;
+
+            /* Custom derived colors for specific components (based on Material principles) */
+            --player-control-bg-base: var(--md-sys-color-surface); /* Base for control overlay background */
+            --player-icon-color: var(--md-sys-color-on-surface);
+            --player-icon-active-color: var(--md-sys-color-primary); /* Use primary for active states */
+            --player-text-color: var(--md-sys-color-on-surface);
+            --player-text-medium-emphasis: var(--md-sys-color-on-surface-variant); /* For less important text like time */
+
+            --player-ripple-color: var(--md-sys-color-on-surface); /* General ripple */
+            --player-ripple-primary: var(--md-sys-color-primary); /* For prominent actions */
+
+            --player-seekbar-track-inactive: var(--md-sys-color-on-surface-variant);
+            --player-seekbar-track-active: var(--md-sys-color-primary);
+            --player-seekbar-track-buffer: var(--md-sys-color-on-surface-variant); /* Slightly different shade for buffer */
+            --player-seekbar-thumb-color: var(--md-sys-color-primary);
+            --player-seekbar-thumb-halo: rgba(var(--md-sys-color-primary-rgb), 0.3);
+
+            --player-menu-bg: var(--md-sys-color-surface-variant);
+            --player-menu-item-hover-bg: rgba(var(--md-sys-color-on-surface-rgb), 0.08);
+            --player-menu-item-selected-color: var(--md-sys-color-primary);
+            
+            --player-tooltip-bg: var(--md-sys-color-on-surface);
+            --player-tooltip-text: var(--md-sys-color-surface);
+
+            /* For JS calculations (Dynamically set) */
+            --md-sys-color-primary-rgb: 208, 188, 255; 
+            --md-sys-color-on-surface-rgb: 230, 225, 229;
+
+            --seekbar-fill: 0%;
+            --volume-fill: 80%;
+            
+            --md-font-family: 'Roboto', sans-serif;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--md-sys-color-background);
+            font-family: var(--md-font-family);
+            color: var(--md-sys-color-on-background);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 16px;
+            user-select: none;
+            overflow-x: hidden;
+            font-size: 14px; /* Default body font size */
+        }
+
+        .player-wrapper {
+            width: 90%;
+            max-width: 960px; /* Increased max-width for better desktop experience */
+            margin-bottom: 24px; /* Space for the URL loader */
+        }
+
+        .player-container {
+            position: relative;
+            width: 100%;
+            background-color: #000000; /* Pure black for video background */
+            border-radius: 12px; /* Slightly more rounded corners */
+            box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.3), 0px 12px 24px rgba(0, 0, 0, 0.25); /* Stronger shadow */
+            overflow: hidden;
+            aspect-ratio: 16 / 9; 
+            display: flex; /* Use flex for video centering/filling in fullscreen */
+            align-items: center;
+            justify-content: center;
+        }
+        .player-container.fullscreen {
+            width: 100vw;
+            height: 100vh;
+            max-width: none;
+            border-radius: 0;
+            box-shadow: none;
+            aspect-ratio: unset;
+        }
+        .player-container.cursor-hidden {
+            cursor: none;
+        }
+
+        video#video {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            cursor: pointer; 
+            object-fit: contain; /* Ensure video is fully visible, letterboxing if needed */
+        }
+        .player-container.fullscreen video#video {
+            flex-grow: 1; /* Allows video to take up available space in fullscreen flex container */
+            object-fit: contain; /* Still contain in fullscreen for aspect ratio */
+        }
+
+        /* Controls Overlay */
+        .controls-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 12px 16px; /* Increased padding */
+            /* Using backdrop-filter for better visibility over bright video content */
+            background: rgba(var(--md-sys-color-surface-rgb), 0.7); /* Base color with opacity */
+            backdrop-filter: blur(8px); /* Apply blur to content behind */
+            -webkit-backdrop-filter: blur(8px); /* WebKit prefix for compatibility */
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 21;
+            display: flex;
+            flex-direction: column;
+            gap: 8px; /* Gap between rows */
+        }
+        .controls-overlay.hidden {
+            opacity: 0;
+            transform: translateY(100%);
+            pointer-events: none;
+        }
+
+        .controls-row {
+            display: flex;
+            align-items: center;
+            gap: 12px; /* Increased gap between controls in a row */
+        }
+        
+        .btn {
+            position: relative;
+            overflow: hidden; 
+            width: 48px; /* Material Design standard touch target size */
+            height: 48px;
+            padding: 12px; /* Padding for the icon inside the button */
+            border: none;
+            background-color: transparent;
+            color: var(--player-icon-color);
+            border-radius: 50%; 
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s ease-out;
+            flex-shrink: 0; /* Prevent buttons from shrinking */
+        }
+        .btn:hover {
+            background-color: rgba(var(--md-sys-color-on-surface-rgb), 0.08); /* Consistent hover state */
+        }
+        .btn:focus-visible { /* Use focus-visible for better accessibility */
+            outline: none;
+            background-color: rgba(var(--md-sys-color-on-surface-rgb), 0.12); /* Consistent focus state */
+        }
+        .btn[aria-pressed="true"] { 
+            color: var(--player-icon-active-color);
+        }
+        .btn .material-icons { /* Style for Material Icons font */
+            font-size: 24px; /* Standard icon size */
+            width: 24px; /* Ensure consistent sizing */
+            height: 24px;
+            pointer-events: none;
+        }
+        /* SVG icons if still used (though switched to Material Icons) */
+        .btn svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+            pointer-events: none;
+        }
+
+        /* Ripple Effect */
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background-color: rgba(var(--md-sys-color-on-surface-rgb), 0.12); /* Default ripple color (on-surface) */
+            transform: scale(0);
+            animation: ripple-animation 600ms cubic-bezier(0.25, 0.8, 0.25, 1);
+            pointer-events: none;
+        }
+        .btn-load .ripple { 
+             background-color: rgba(var(--md-sys-color-primary-rgb), 0.2); /* Primary ripple */
+        }
+
+        @keyframes ripple-animation {
+            to {
+                transform: scale(3); 
+                opacity: 0;
+            }
+        }
+
+        /* Tooltip */
+        .control-tooltip {
+            position: absolute;
+            bottom: calc(100% + 8px); 
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--player-tooltip-bg);
+            color: var(--player-tooltip-text);
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 12px; 
+            font-weight: 500;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.15s ease, visibility 0s 0.15s linear, transform 0.15s ease;
+            pointer-events: none;
+            z-index: 30;
+            /* Material elevation */
+            box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.2); 
+        }
+        .btn:hover .control-tooltip,
+        .btn:focus-visible .control-tooltip { /* Show tooltip on focus-visible too */
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) scale(1); /* No scale change for tooltip */
+            transition-delay: 0.3s, 0.3s, 0.3s; /* Slightly faster tooltip display */
+        }
+
+        /* Seekbar */
+        .seekbar-container {
+            position: relative;
+            flex-grow: 1;
+            height: 28px; /* Increased height for easier interaction */
+            display: flex;
+            align-items: center;
+            padding: 0 16px; /* Increased padding */
+            margin: 0; /* Remove horizontal margin as it's part of padding now */
+            cursor: pointer;
+        }
+        input[type="range"].seekbar {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 4px; 
+            background: transparent; 
+            cursor: pointer;
+            padding: 0;
+            margin: 0;
+            z-index: 2; 
+            position: relative;
+            outline: none; /* Managed by custom focus style */
+        }
+        .seekbar-track-visuals {
+            position: absolute;
+            left: 16px; /* Match seekbar container padding */
+            right: 16px; 
+            top: 50%;
+            transform: translateY(-50%);
+            height: 4px;
+            pointer-events: none;
+        }
+        .seekbar-track { 
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-color: var(--player-seekbar-track-inactive);
+            border-radius: 2px;
+            z-index: 0;
+        }
+        #seekbarBufferedProgress {
+            position: absolute;
+            height: 100%;
+            background-color: var(--player-seekbar-track-buffer);
+            border-radius: 2px;
+            width: 0%;
+            z-index: 1;
+            transition: width 0.1s linear;
+        }
+        input[type="range"].seekbar::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(to right, var(--player-seekbar-track-active) 0%, var(--player-seekbar-track-active) var(--seekbar-fill, 0%), transparent var(--seekbar-fill, 0%), transparent 100%);
+            border-radius: 2px;
+        }
+        input[type="range"].seekbar::-moz-range-track { 
+            width: 100%;
+            height: 4px;
+            background: var(--player-seekbar-track-inactive); 
+            border-radius: 2px;
+            border: none;
+        }
+        input[type="range"].seekbar::-moz-range-progress { 
+            background-color: var(--player-seekbar-track-active);
+            height: 4px;
+            border-radius: 2px;
+        }
+        input[type="range"].seekbar::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            background-color: var(--player-seekbar-thumb-color);
+            border-radius: 50%;
+            border: none;
+            margin-top: -4px; 
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            box-shadow: 0 0 0 0 rgba(0,0,0,0); /* Initial state for smooth transition */
+        }
+        input[type="range"].seekbar::-moz-range-thumb {
+            width: 12px;
+            height: 12px;
+            background-color: var(--player-seekbar-thumb-color);
+            border-radius: 50%;
+            border: none;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            box-shadow: 0 0 0 0 rgba(0,0,0,0);
+        }
+        input[type="range"].seekbar:hover::-webkit-slider-thumb,
+        input[type="range"].seekbar:focus-visible::-webkit-slider-thumb {
+            transform: scale(1.33); 
+            box-shadow: 0 0 0 6px var(--player-seekbar-thumb-halo);
+        }
+        input[type="range"].seekbar:hover::-moz-range-thumb,
+        input[type="range"].seekbar:focus-visible::-moz-range-thumb {
+            transform: scale(1.33);
+            box-shadow: 0 0 0 6px var(--player-seekbar-thumb-halo);
+        }
+
+        #seekbarTooltip {
+            position: absolute;
+            bottom: 30px; /* Adjusted to be above the higher seekbar */
+            background-color: var(--player-tooltip-bg);
+            color: var(--player-tooltip-text);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            opacity: 0;
+            transform: translateX(-50%) scale(0.9);
+            transition: opacity .1s ease, transform .1s ease;
+            pointer-events: none;
+            white-space: nowrap;
+            z-index: 15;
+            visibility: hidden;
+            box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .seekbar-container:hover #seekbarTooltip.visible { 
+            opacity: 1;
+            transform: translateX(-50%) scale(1);
+            visibility: visible;
+        }
+
+        /* Time Display */
+        .time-display {
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--player-text-medium-emphasis); /* Use medium emphasis color */
+            padding: 0 4px;
+            font-variant-numeric: tabular-nums; /* Ensures numbers align vertically */
+            flex-shrink: 0;
+        }
+        .time-display span {
+            padding: 0 2px;
+        }
+
+        /* Volume Control */
+        .volume-area {
+            position: relative;
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        #volumeSliderWrapper {
+            position: absolute;
+            bottom: calc(100% + 12px); /* Adjusted for larger controls */
+            left: 50%;
+            transform: translateX(-50%) scaleY(0.8);
+            transform-origin: bottom center;
+            width: 48px; /* Width same as button for consistency */
+            height: 150px; /* Increased height for better slider range */
+            background-color: var(--md-sys-color-surface-variant); /* Slightly different surface for popups */
+            border-radius: 8px; /* More rounded */
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3), 0 0 4px rgba(0,0,0,0.2);
+            padding: 16px 0; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, transform 0.2s ease, visibility 0s 0.2s linear;
+            z-index: 25;
+            /* Apply backdrop-filter here too */
+            backdrop-filter: blur(6px); 
+            -webkit-backdrop-filter: blur(6px);
+        }
+        #volumeSliderWrapper.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) scaleY(1);
+            transition-delay: 0s,0s,0s;
+        }
+        .volume-area > .btn:hover + #volumeSliderWrapper:not(.active),
+        .volume-area > .btn:focus-visible + #volumeSliderWrapper:not(.active),
+        #volumeSliderWrapper:hover { 
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) scaleY(1);
+            transition-delay: 0.2s,0.2s,0.2s; 
+        }
+
+        input[type="range"].volume-slider-vertical {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 120px; /* Longer for better control */
+            height: 4px;  
+            background: transparent;
+            cursor: pointer;
+            transform-origin: center;
+            transform: rotate(-90deg);
+            margin: 0;
+            outline: none;
+        }
+        input[type="range"].volume-slider-vertical::-webkit-slider-runnable-track {
+            width: 100%; 
+            height: 4px; 
+            background: linear-gradient(to right, var(--player-seekbar-track-active) 0%, var(--player-seekbar-track-active) var(--volume-fill, 80%), var(--player-seekbar-track-inactive) var(--volume-fill, 80%), var(--player-seekbar-track-inactive) 100%);
+            border-radius: 2px;
+        }
+        input[type="range"].volume-slider-vertical::-moz-range-track {
+            width: 100%;
+            height: 4px;
+            background: var(--player-seekbar-track-inactive);
+            border-radius: 2px;
+            border: none;
+        }
+        input[type="range"].volume-slider-vertical::-moz-range-progress {
+            background-color: var(--player-seekbar-track-active);
+            height: 4px;
+            border-radius: 2px;
+        }
+
+        input[type="range"].volume-slider-vertical::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            background: var(--player-seekbar-thumb-color);
+            border-radius: 50%;
+            margin-top: -4px;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            box-shadow: 0 0 0 0 rgba(0,0,0,0);
+        }
+        input[type="range"].volume-slider-vertical::-moz-range-thumb {
+            width: 12px;
+            height: 12px;
+            background: var(--player-seekbar-thumb-color);
+            border-radius: 50%;
+            border: none;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            box-shadow: 0 0 0 0 rgba(0,0,0,0);
+        }
+        input[type="range"].volume-slider-vertical:hover::-webkit-slider-thumb,
+        input[type="range"].volume-slider-vertical:focus-visible::-webkit-slider-thumb {
+             transform: scale(1.33);
+             box-shadow: 0 0 0 6px var(--player-seekbar-thumb-halo);
+        }
+        input[type="range"].volume-slider-vertical:hover::-moz-range-thumb,
+        input[type="range"].volume-slider-vertical:focus-visible::-moz-range-thumb {
+            transform: scale(1.33);
+            box-shadow: 0 0 0 6px var(--player-seekbar-thumb-halo);
+        }
+        
+        /* Settings Menus (Speed, Quality, Stats) */
+        .control-popup-container {
+            position: relative;
+            flex-shrink: 0;
+        }
+        .control-popup.menu {
+            position: absolute;
+            bottom: calc(100% + 12px); /* Adjusted for larger controls */
+            right: 0; /* Align right side of menu to right side of button */
+            transform: translateY(10%) scale(0.95); /* Animate from slightly below */
+            transform-origin: bottom right; /* Transform origin for right alignment */
+            width: 200px; /* Standardized width for menus */
+            background-color: var(--player-menu-bg);
+            border-radius: 8px;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.35), 0 0 4px rgba(0,0,0,0.25); /* Stronger shadow */
+            padding: 8px 0; 
+            z-index: 25;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s cubic-bezier(0, 0, 0.2, 1), transform 0.2s cubic-bezier(0, 0, 0.2, 1), visibility 0s 0.2s linear;
+            max-height: 280px; /* Increased max-height */
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--md-sys-color-on-surface-variant) transparent;
+            /* Apply backdrop-filter here too */
+            backdrop-filter: blur(6px); 
+            -webkit-backdrop-filter: blur(6px);
+        }
+        .control-popup.menu::-webkit-scrollbar {
+            width: 8px;
+        }
+        .control-popup.menu::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .control-popup.menu::-webkit-scrollbar-thumb {
+            background-color: var(--md-sys-color-on-surface-variant);
+            border-radius: 4px;
+        }
+        .control-popup.menu:hover { /* Keep menu open if mouse is over it */
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0) scale(1);
+        }
+
+        .control-popup.menu.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0) scale(1);
+            transition-delay: 0s,0s,0s;
+        }
+        .menu-item {
+            display: flex; 
+            align-items: center;
+            padding: 10px 16px; /* Increased padding */
+            color: var(--player-text-color);
+            font-size: 15px; /* Slightly larger font */
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            position: relative; /* For ripple */
+        }
+        .menu-item:hover,
+        .menu-item:focus-visible { /* Add focus-visible for keyboard navigation */
+            background-color: var(--player-menu-item-hover-bg);
+            outline: none; /* Remove default outline */
+        }
+        .menu-item.selected {
+            color: var(--player-menu-item-selected-color);
+            font-weight: 500; 
+        }
+        .menu-item[aria-checked="true"] .material-icons { 
+            visibility: visible;
+            margin-right: 8px; /* Space for icon */
+            font-size: 18px; /* Slightly smaller checkmark icon */
+        }
+        .menu-item[aria-checked="false"] .material-icons {
+            visibility: hidden; /* Hide checkmark if not selected */
+            margin-right: 8px; /* Maintain space even if hidden */
+        }
+
+        /* Checkmark adjustments for quality and speed */
+         .menu-item[data-level="-1"][aria-checked="true"] .material-icons, 
+         .menu-item[data-speed="1"][aria-checked="true"] .material-icons { 
+            visibility: visible; /* Show checkmark for "Auto" and "Normal" */
+         }
+
+
+        #speedBtn .speed-indicator {
+            position: absolute;
+            bottom: 6px; 
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px; /* Slightly larger font */
+            font-weight: 500;
+            color: currentColor; 
+            line-height: 1;
+            pointer-events: none;
+            text-align: center; /* Center the text */
+            width: 100%; /* Occupy full width to center effectively */
+        }
+        
+        /* Nerd Stats Overlay */
+        #nerdStatsOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(18, 18, 18, 0.7); /* Consistent dark overlay */
+            color: var(--md-sys-color-on-background);
+            padding: 16px;
+            font-family: 'Roboto Mono', monospace; /* Monospace font for stats */
+            font-size: 13px;
+            line-height: 1.5;
+            white-space: pre-wrap; /* Preserve whitespace and wrap long lines */
+            overflow-y: auto;
+            z-index: 20; /* Below controls but above video */
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, visibility 0s 0.2s linear;
+            backdrop-filter: blur(2px); /* Subtle blur effect */
+            -webkit-backdrop-filter: blur(2px);
+        }
+        #nerdStatsOverlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        #nerdStatsOverlay strong {
+            color: var(--md-sys-color-primary); /* Highlight key info */
+            font-weight: 500;
+        }
+
+        /* Loading, Error, Notifier */
+        .loading-overlay, .error-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 0.2s ease, visibility 0s 0.2s linear;
+            z-index: 20;
+            background-color: rgba(18, 18, 18, 0.7); 
+        }
+        .loading-overlay.show, .error-overlay.show {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .spinner { 
+            width: 48px; /* Larger spinner */
+            height: 48px;
+            border: 4px solid var(--md-sys-color-secondary);
+            border-left-color: transparent; 
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        #loadingPercentage {
+            margin-top: 16px;
+            font-size: 15px;
+            color: var(--player-text-medium-emphasis);
+        }
+        #errorOverlay {
+            color: var(--md-sys-color-error); 
+            font-size: 16px;
+            padding: 24px;
+        }
+        #errorOverlay strong {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--md-sys-color-on-error-container); /* Use brighter color for error title */
+        }
+
+        #notifier { 
+            position: fixed;
+            bottom: 32px; /* Slightly higher */
+            left: 50%;
+            transform: translateX(-50%) translateY(120%); 
+            background-color: var(--md-sys-color-surface-variant); /* Use a distinct surface for snackbar */
+            color: var(--md-sys-color-on-surface);
+            padding: 14px 20px; /* Larger padding */
+            border-radius: 8px; /* More rounded */
+            box-shadow: 0 3px 6px rgba(0,0,0,0.25), 0 6px 12px rgba(0,0,0,0.2); /* Stronger shadow */
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s cubic-bezier(0, 0, 0.2, 1), transform 0.35s cubic-bezier(0, 0, 0.2, 1); 
+            font-weight: 500;
+            font-size: 15px;
+            z-index: 9999;
+            min-width: 320px; /* Slightly larger min-width */
+            max-width: 600px; 
+            text-align: center; /* Center text by default */
+        }
+        #notifier.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+            pointer-events: auto;
+        }
+
+        /* Custom URL Loader */
+        .custom-url-loader {
+            margin-top: 24px;
+            display: flex;
+            gap: 16px; /* Increased gap */
+            align-items: center;
+            padding: 16px; /* Increased padding */
+            background-color: var(--md-sys-color-surface);
+            border-radius: 12px; /* More rounded */
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 960px; /* Match player wrapper */
+        }
+        #customUrlInput {
+            flex-grow: 1;
+            padding: 12px 16px; /* Larger padding */
+            border-radius: 8px; /* More rounded */
+            border: 1px solid var(--md-sys-color-outline);
+            background-color: var(--md-sys-color-surface); 
+            color: var(--md-sys-color-on-surface);
+            font-size: 15px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            line-height: 1.5; /* Ensure good line height */
+        }
+        #customUrlInput::placeholder {
+            color: var(--md-sys-color-on-surface-variant);
+            opacity: 0.7; /* Slightly faded placeholder */
+        }
+        #customUrlInput:focus {
+            outline: none;
+            border-color: var(--md-sys-color-primary);
+            box-shadow: 0 0 0 3px rgba(var(--md-sys-color-primary-rgb), 0.3);
+        }
+        .btn-load { 
+            position: relative; 
+            overflow: hidden; 
+            padding: 10px 24px; /* Larger padding for button */
+            border-radius: 8px; /* More rounded */
+            border: none;
+            background-color: var(--md-sys-color-primary); /* Primary action button uses primary color */
+            color: var(--md-sys-color-on-primary); 
+            font-weight: 500;
+            font-size: 15px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.03em; /* Slightly tighter letter spacing */
+            transition: background-color 0.2s ease, box-shadow 0.2s ease;
+            min-width: 120px; /* Minimum width for button */
+        }
+        .btn-load:hover {
+            background-color: var(--md-sys-color-primary-container); /* Darker shade on hover */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .btn-load:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(var(--md-sys-color-primary-rgb), 0.4);
+        }
+
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) { /* Adjusted breakpoint */
+            .player-wrapper {
+                width: 100%;
+                padding: 0 8px; /* Add some horizontal padding */
+            }
+            .player-container {
+                border-radius: 8px;
+            }
+            .controls-overlay {
+                padding: 8px 12px;
+            }
+            .controls-row {
+                gap: 8px;
+            }
+            .btn {
+                width: 44px;
+                height: 44px;
+                padding: 10px;
+            }
+            .btn .material-icons {
+                font-size: 20px;
+                width: 20px;
+                height: 20px;
+            }
+            .time-display {
+                font-size: 12px;
+            }
+            #speedBtn .speed-indicator {
+                font-size: 10px;
+                bottom: 4px;
+            }
+            .control-popup.menu {
+                width: 180px;
+            }
+            #volumeSliderWrapper {
+                height: 130px;
+                width: 44px;
+            }
+            input[type="range"].volume-slider-vertical {
+                width: 100px;
+            }
+             .custom-url-loader {
+                gap: 12px;
+                padding: 12px;
+            }
+            #customUrlInput {
+                padding: 10px 14px;
+                font-size: 14px;
+            }
+            .btn-load {
+                padding: 8px 20px;
+                font-size: 14px;
+                min-width: unset;
+            }
+             #notifier {
+                min-width: unset;
+                max-width: calc(100% - 32px);
+                padding: 12px 18px;
+            }
+        }
+
+        @media (max-width: 550px) { /* Further adjusted breakpoint */
+             #pipBtn, #loopBtn, #qualityBtn { /* Hide more buttons aggressively */
+                 display: none !important; 
+            }
+            .custom-url-loader {
+                flex-direction: column;
+                gap: 8px;
+                padding: 10px;
+            }
+            #customUrlInput, .btn-load {
+                width: 100%;
+            }
+            #notifier {
+                width: calc(100% - 32px);
+                bottom: 16px;
+                left: 16px; 
+                transform: translateY(120%) translateX(0); 
+            }
+            #notifier.show {
+                 transform: translateY(0) translateX(0);
+            }
+            .time-display {
+                display: none; /* Hide time display on very small screens to save space */
+            }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="player-wrapper">
+        <div id="playerContainer" class="player-container">
+            <video id="video" playsinline></video>
+
+            <div id="loadingOverlay" class="loading-overlay" aria-hidden="true">
+                <div class="spinner"></div>
+                <span id="loadingPercentage" class="loading-text">Loading...</span>
+            </div>
+
+            <div id="errorOverlay" class="error-overlay" aria-hidden="true">
+                <!-- Error message set by JS -->
+            </div>
+
+            <!-- Nerd Stats Overlay -->
+            <pre id="nerdStatsOverlay" class="nerd-stats-overlay" aria-hidden="true"></pre>
+
+            <div id="controlsOverlay" class="controls-overlay">
+                <div class="controls-row">
+                    <div class="seekbar-container" id="seekbarContainer">
+                        <div class="seekbar-track-visuals">
+                             <div class="seekbar-track"></div>
+                             <div id="seekbarBufferedProgress"></div>
+                        </div>
+                        <input type="range" id="seekbar" class="seekbar" value="0" min="0" max="100" step="0.1" aria-label="Video progress">
+                        <div id="seekbarTooltip" class="seekbar-tooltip">0:00</div>
+                    </div>
+                </div>
+                <div class="controls-row controls-main">
+                    <button id="playPauseBtn" class="btn" aria-label="Play" aria-pressed="false" title="Play (k)">
+                        <span class="material-icons">play_arrow</span>
+                        <span class="control-tooltip">Play (k)</span>
+                    </button>
+
+                    <div class="volume-area">
+                        <button id="volumeBtn" class="btn" aria-label="Mute" aria-expanded="false" title="Mute (m)">
+                            <span class="material-icons">volume_up</span>
+                            <span class="control-tooltip">Mute (m)</span>
+                        </button>
+                        <div id="volumeSliderWrapper" class="volume-slider-wrapper">
+                            <input type="range" id="volumeRangeSlider" class="volume-slider-vertical" value="0.8" min="0" max="1" step="0.01" aria-label="Volume">
+                        </div>
+                    </div>
+
+                    <div class="time-display">
+                        <span id="currentTime">0:00</span>
+                        <span>/</span>
+                        <span id="duration">0:00</span>
+                    </div>
+
+                    <div style="flex-grow: 1;"></div> <!-- Spacer -->
+
+                    <div class="control-popup-container">
+                        <button id="qualityBtn" class="btn" aria-label="Quality settings" aria-haspopup="true" aria-expanded="false" aria-controls="qualityMenu" title="Quality">
+                            <span class="material-icons">hd</span> <!-- Changed to HD icon for quality -->
+                            <span class="control-tooltip">Quality</span>
+                        </button>
+                        <div id="qualityMenu" class="control-popup menu" role="menu" aria-labelledby="qualityBtn" aria-hidden="true" tabindex="-1">
+                            <!-- Quality options populated by JS -->
+                        </div>
+                    </div>
+                    
+                    <div class="control-popup-container">
+                        <button id="speedBtn" class="btn" aria-label="Playback speed settings" aria-haspopup="true" aria-expanded="false" aria-controls="speedMenu" title="Speed">
+                            <span class="material-icons">speed</span> <!-- New speed icon -->
+                            <span id="speedIndicator" class="speed-indicator">1x</span>
+                            <span class="control-tooltip">Speed</span>
+                        </button>
+                        <div id="speedMenu" class="control-popup menu" role="menu" aria-labelledby="speedBtn" aria-hidden="true" tabindex="-1">
+                            <div class="menu-item" role="menuitemradio" data-speed="0.25" aria-checked="false" tabindex="0"><span class="material-icons">check</span>0.25x</div>
+                            <div class="menu-item" role="menuitemradio" data-speed="0.5" aria-checked="false" tabindex="0"><span class="material-icons">check</span>0.5x</div>
+                            <div class="menu-item" role="menuitemradio" data-speed="0.75" aria-checked="false" tabindex="0"><span class="material-icons">check</span>0.75x</div>
+                            <div class="menu-item selected" role="menuitemradio" data-speed="1" aria-checked="true" tabindex="0"><span class="material-icons">check</span>Normal</div>
+                            <div class="menu-item" role="menuitemradio" data-speed="1.25" aria-checked="false" tabindex="0"><span class="material-icons">check</span>1.25x</div>
+                            <div class="menu-item" role="menuitemradio" data-speed="1.5" aria-checked="false" tabindex="0"><span class="material-icons">check</span>1.5x</div>
+                            <div class="menu-item" role="menuitemradio" data-speed="1.75" aria-checked="false" tabindex="0"><span class="material-icons">check</span>1.75x</div>
+                            <div class="menu-item" role="menuitemradio" data-speed="2" aria-checked="false" tabindex="0"><span class="material-icons">check</span>2x</div>
+                        </div>
+                    </div>
+                    
+                    <button id="loopBtn" class="btn" aria-label="Enable Loop" aria-pressed="false" title="Toggle Loop (l)">
+                        <span class="material-icons" id="loopIcon">loop</span>
+                        <span class="control-tooltip">Enable Loop (l)</span>
+                    </button>
+
+                    <button id="pipBtn" class="btn" aria-label="Enter Picture-in-Picture" title="Picture-in-Picture (p)">
+                        <span class="material-icons">picture_in_picture_alt</span>
+                        <span class="control-tooltip">Picture-in-Picture (p)</span>
+                    </button>
+
+                    <!-- Nerd Stats Button -->
+                    <button id="nerdStatsBtn" class="btn" aria-label="Toggle Nerd Stats" title="Toggle Nerd Stats (s)">
+                        <span class="material-icons">analytics</span> <!-- Icon for stats -->
+                        <span class="control-tooltip">Nerd Stats (s)</span>
+                    </button>
+
+                    <button id="fullscreenBtn" class="btn" aria-label="Enter Fullscreen" aria-pressed="false" title="Fullscreen (f)">
+                        <span class="material-icons">fullscreen</span>
+                        <span class="control-tooltip">Fullscreen (f)</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="custom-url-loader">
+            <input type="text" id="customUrlInput" placeholder="Enter custom HLS (m3u8) or MP4 URL" aria-label="Custom media URL input">
+            <button id="loadCustomUrlBtn" class="btn-load">Load</button>
+        </div>
+    </div>
+
+
+    <div id="notifier" role="status" aria-live="polite"></div>
+
+    <script>
+    (function () {
+        // DOM Element References (ensure all are consistently checked)
+        const playerContainer = document.getElementById('playerContainer');
+        const video = document.getElementById('video');
+        const controlsOverlay = document.getElementById('controlsOverlay');
+        
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const playPauseIcon = playPauseBtn?.querySelector('.material-icons');
+        const playPauseTooltip = playPauseBtn?.querySelector('.control-tooltip');
+        
+        const volumeBtn = document.getElementById('volumeBtn');
+        const volumeIcon = volumeBtn?.querySelector('.material-icons');
+        const volumeTooltip = volumeBtn?.querySelector('.control-tooltip');
+        const volumeRangeSlider = document.getElementById('volumeRangeSlider');
+        const volumeSliderWrapper = document.getElementById('volumeSliderWrapper');
+        
+        const seekbarContainer = document.getElementById('seekbarContainer');
+        const seekbar = document.getElementById('seekbar');
+        const seekbarBufferedProgress = document.getElementById('seekbarBufferedProgress');
+        const seekbarTooltip = document.getElementById('seekbarTooltip');
+        
+        const currentTimeEl = document.getElementById('currentTime');
+        const durationEl = document.getElementById('duration');
+        
+        const pipBtn = document.getElementById('pipBtn');
+        const pipIcon = pipBtn?.querySelector('.material-icons');
+        const pipTooltip = pipBtn?.querySelector('.control-tooltip');
+        
+        const loopBtn = document.getElementById('loopBtn');
+        const loopIcon = loopBtn?.querySelector('.material-icons'); 
+        const loopTooltip = loopBtn?.querySelector('.control-tooltip');
+        
+        const speedBtn = document.getElementById('speedBtn');
+        const speedIndicator = document.getElementById('speedIndicator');
+        const speedMenu = document.getElementById('speedMenu');
+        
+        const qualityBtn = document.getElementById('qualityBtn');
+        const qualityMenu = document.getElementById('qualityMenu');
+
+        const nerdStatsBtn = document.getElementById('nerdStatsBtn');
+        const nerdStatsOverlay = document.getElementById('nerdStatsOverlay');
+        
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        const fullscreenIcon = fullscreenBtn?.querySelector('.material-icons');
+        const fullscreenTooltip = fullscreenBtn?.querySelector('.control-tooltip');
+
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingPercentage = document.getElementById('loadingPercentage');
+        const errorOverlay = document.getElementById('errorOverlay');
+        const notifier = document.getElementById('notifier');
+        
+        const customUrlInput = document.getElementById('customUrlInput');
+        const loadCustomUrlBtn = document.getElementById('loadCustomUrlBtn');
+
+        // State Variables & Constants
+        let videoSrc = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'; // Default HLS stream
+        
+        let notifierTimeout = null;
+        let controlsActivityTimer = null; 
+        const CONTROLS_FADE_TIMEOUT = 3000;
+        let hls = null;
+        let isSpeedMenuOpen = false;
+        let isQualityMenuOpen = false;
+        let isNerdStatsOpen = false; // New state variable for nerd stats
+        let lastVolume = 0.8; 
+        let activeMenu = null; // Can be speedMenu or qualityMenu
+        let isSeeking = false;
+        let wasOffline = !navigator.onLine;
+        let mediaErrorState = null; 
+        let nerdStatsInterval = null; // Interval for updating nerd stats
+
+        // --- Helper Functions ---
+        function showNotifier(msg, duration = 2500) { 
+            if (!notifier) return;
+            notifier.textContent = msg;
+            notifier.classList.add('show');
+            clearTimeout(notifierTimeout);
+            notifierTimeout = setTimeout(() => notifier.classList.remove('show'), duration);
+        }
+
+        function toggleLoading(show, percentageText = '') {
+            if (!loadingOverlay || !loadingPercentage) return;
+            loadingOverlay.classList.toggle('show', show);
+            loadingOverlay.setAttribute('aria-hidden', (!show).toString());
+            loadingPercentage.textContent = show ? percentageText : '';
+            loadingPercentage.style.display = show && percentageText ? 'block' : 'none';
+        }
+
+        function showError(msg, isNetworkOrPlaybackError = false) {
+            if (!errorOverlay) return;
+            errorOverlay.innerHTML = `<strong>Playback Error</strong><br>${msg}`;
+            errorOverlay.classList.add('show');
+            errorOverlay.setAttribute('aria-hidden', 'false');
+            console.error("Player Error:", msg);
+            toggleLoading(false);
+            mediaErrorState = { message: msg, isNetworkOrPlaybackError: isNetworkOrPlaybackError };
+        }
+        function clearError() {
+            if (errorOverlay) {
+                errorOverlay.classList.remove('show');
+                errorOverlay.setAttribute('aria-hidden', 'true');
+                errorOverlay.innerHTML = '';
+            }
+            mediaErrorState = null;
+        }
+
+        function formatTime(timeInSeconds) {
+            if (isNaN(timeInSeconds) || !isFinite(timeInSeconds) || timeInSeconds < 0) return '0:00';
+            const minutes = Math.floor(timeInSeconds / 60);
+            const seconds = Math.floor(timeInSeconds % 60);
+            return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+        }
+        
+        function createRipple(event) {
+            const button = event.currentTarget;
+            if (!button || typeof button.getBoundingClientRect !== 'function') return;
+            
+            const existingRipple = button.querySelector('.ripple');
+            if (existingRipple) existingRipple.remove();
+
+            const circle = document.createElement('span');
+            const diameter = Math.max(button.clientWidth, button.clientHeight);
+            const radius = diameter / 2;
+            const rect = button.getBoundingClientRect();
+
+            circle.style.width = circle.style.height = `${diameter}px`;
+            circle.style.left = `${event.clientX - rect.left - radius}px`;
+            circle.style.top = `${event.clientY - rect.top - radius}px`;
+            
+            const isPrimaryButton = button.classList.contains('btn-load');
+            circle.classList.add('ripple');
+            if (isPrimaryButton) {
+                const primaryColorRgb = getComputedStyle(document.documentElement).getPropertyValue('--md-sys-color-primary-rgb').trim();
+                circle.style.backgroundColor = `rgba(${primaryColorRgb}, 0.2)`;
+            } else {
+                const onSurfaceColorRgb = getComputedStyle(document.documentElement).getPropertyValue('--md-sys-color-on-surface-rgb').trim();
+                circle.style.backgroundColor = `rgba(${onSurfaceColorRgb}, 0.12)`;
+            }
+            
+            button.appendChild(circle);
+            setTimeout(() => {
+                if (circle.parentNode) {
+                    circle.remove();
+                }
+            }, 600); 
+        }
+
+        // --- UI Update Functions ---
+        function updatePlayPauseUI() {
+            if (!video || !playPauseIcon || !playPauseBtn) return;
+            const isPaused = video.paused || video.ended;
+            playPauseIcon.textContent = isPaused ? 'play_arrow' : 'pause';
+            playPauseBtn.setAttribute('aria-label', isPaused ? 'Play' : 'Pause');
+            playPauseBtn.setAttribute('aria-pressed', (!isPaused).toString());
+            if (playPauseTooltip) playPauseTooltip.textContent = isPaused ? 'Play (k)' : 'Pause (k)';
+        }
+
+        function updateFullscreenUI() {
+            if (!fullscreenIcon || !fullscreenBtn || !playerContainer) return;
+            const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+            fullscreenIcon.textContent = isFs ? 'fullscreen_exit' : 'fullscreen'; 
+            fullscreenBtn.setAttribute('aria-label', isFs ? 'Exit Fullscreen' : 'Enter Fullscreen');
+            fullscreenBtn.setAttribute('aria-pressed', isFs.toString());
+            if (fullscreenTooltip) fullscreenTooltip.textContent = isFs ? 'Exit Fullscreen (f)' : 'Fullscreen (f)';
+            playerContainer.classList.toggle('fullscreen', isFs);
+        }
+        
+        function updateVolumeUI() {
+            if (!video || !volumeIcon || !volumeBtn || !volumeRangeSlider) return;
+            const vol = video.volume;
+            const muted = video.muted;
+            let iconText;
+
+            if (muted || vol < 0.01) iconText = 'volume_off'; 
+            else if (vol < 0.5) iconText = 'volume_down'; 
+            else iconText = 'volume_up'; 
+            
+            volumeIcon.textContent = iconText;
+            volumeBtn.setAttribute('aria-label', muted ? "Unmute" : "Mute");
+            if (volumeTooltip) volumeTooltip.textContent = muted ? 'Unmute (m)' : 'Mute (m)';
+            
+            volumeRangeSlider.value = muted ? 0 : vol;
+            volumeRangeSlider.style.setProperty('--volume-fill', `${muted ? 0 : vol * 100}%`);
+            volumeRangeSlider.setAttribute('aria-valuenow', muted ? 0 : (vol * 100).toFixed(0));
+            volumeRangeSlider.setAttribute('aria-valuetext', muted ? 'Muted' : `${(vol * 100).toFixed(0)}% volume`);
+        }
+
+        function updateSeekbar() {
+            if (!video || !seekbar || !currentTimeEl || !seekbarBufferedProgress || isSeeking) return; 
+            const duration = video.duration;
+
+            if (isNaN(duration) || !isFinite(duration) || duration <= 0) {
+              seekbar.value = 0; 
+              seekbar.style.setProperty('--seekbar-fill', `0%`);
+              if(currentTimeEl) currentTimeEl.textContent = formatTime(0); 
+              if (durationEl && (durationEl.textContent === "0:00" || durationEl.textContent === "" || !durationEl.textContent.includes(":"))) {
+                  durationEl.textContent = formatTime(0);
+              }
+              if(seekbarBufferedProgress) seekbarBufferedProgress.style.width = '0%';
+              seekbar.setAttribute('aria-valuenow', '0'); 
+              seekbar.setAttribute('aria-valuetext', '0:00');
+              return;
+            }
+
+            const currentTime = video.currentTime;
+            const percentage = (currentTime / duration) * 100;
+            seekbar.value = percentage; 
+            seekbar.style.setProperty('--seekbar-fill', `${percentage}%`);
+            if(currentTimeEl) currentTimeEl.textContent = formatTime(currentTime);
+            seekbar.setAttribute('aria-valuenow', percentage.toFixed(2));
+            seekbar.setAttribute('aria-valuetext', formatTime(currentTime));
+
+            if (video.buffered && video.buffered.length > 0) {
+                try { 
+                    const bufferedEnd = video.buffered.end(video.buffered.length - 1);
+                    const bufferedPercentage = (bufferedEnd / duration) * 100;
+                   if(seekbarBufferedProgress) seekbarBufferedProgress.style.width = `${Math.min(bufferedPercentage, 100)}%`;
+                } catch (e) { 
+                   if(seekbarBufferedProgress) seekbarBufferedProgress.style.width = '0%';
+                }
+            } else { 
+               if(seekbarBufferedProgress) seekbarBufferedProgress.style.width = '0%'; 
+            }
+        }
+
+        function updatePipButtonUI() {
+            if (!pipBtn || !pipIcon) return;
+            if (!document.pictureInPictureEnabled || video.disablePictureInPicture) { 
+              pipBtn.style.display = 'none'; 
+              return; 
+            }
+            pipBtn.style.display = 'flex';
+            const inPip = document.pictureInPictureElement === video;
+            pipIcon.textContent = inPip ? 'picture_in_picture_exit' : 'picture_in_picture_alt';
+            pipBtn.setAttribute('aria-label', inPip ? 'Exit Picture-in-Picture' : 'Enter Picture-in-Picture');
+            if (pipTooltip) pipTooltip.textContent = inPip ? 'Exit PiP (p)' : 'Picture-in-Picture (p)';
+            pipBtn.setAttribute('aria-pressed', inPip.toString());
+        }
+        
+        function updateLoopToggleUI() {
+            if (!loopBtn || !video || !loopIcon) return;
+            const isLooping = video.loop;
+            loopIcon.textContent = isLooping ? 'repeat_one' : 'loop'; 
+            loopBtn.setAttribute('aria-label', isLooping ? 'Disable Loop' : 'Enable Loop');
+            if (loopTooltip) loopTooltip.textContent = isLooping ? 'Loop Off (l)' : 'Loop On (l)';
+            loopBtn.setAttribute('aria-pressed', isLooping.toString());
+            loopBtn.style.color = isLooping ? 'var(--player-icon-active-color)' : 'var(--player-icon-color)';
+        }
+
+        function updateSpeedIndicator() {
+            if (!speedIndicator || !video) return;
+            const rate = video.playbackRate;
+            speedIndicator.textContent = rate === 1 ? '1x' : `${rate.toFixed(rate % 1 === 0 ? 0 : (rate.toString().split('.')[1]?.length || 2) > 1 ? 2 : 1)}x`;
+        }
+
+        // --- Controls Visibility & Interaction ---
+        function hidePlayerControls() {
+            if (!controlsOverlay || !playerContainer || !video) return;
+            // Don't hide if: video paused, a menu is open, volume slider active, or mouse is hovering over interactive parts
+            if (video.paused || activeMenu || isSpeedMenuOpen || isQualityMenuOpen || isNerdStatsOpen ||
+                (volumeSliderWrapper && volumeSliderWrapper.classList.contains('active')) ||
+                document.querySelector('.btn:hover, .menu-item:hover, input[type="range"]:hover, .control-popup.menu:hover, .volume-slider-wrapper:hover')
+            ) {
+                resetControlsFadeTimer(true); 
+                return;
+            }
+            controlsOverlay.classList.add('hidden');
+            playerContainer.classList.add('cursor-hidden');
+        }
+
+        function showPlayerControls(isPersistent = false) {
+            if (!controlsOverlay || !playerContainer) return;
+            controlsOverlay.classList.remove('hidden');
+            playerContainer.classList.remove('cursor-hidden');
+            resetControlsFadeTimer(isPersistent || video?.paused); 
+        }
+
+        function resetControlsFadeTimer(isPersistent = false) {
+            if (!video) return;
+            clearTimeout(controlsActivityTimer);
+            if (!isPersistent && !video.paused) { 
+                controlsActivityTimer = setTimeout(hidePlayerControls, CONTROLS_FADE_TIMEOUT);
+            }
+        }
+        
+        if (playerContainer) {
+            playerContainer.addEventListener('mousemove', () => showPlayerControls());
+            playerContainer.addEventListener('mouseenter', () => showPlayerControls());
+        }
+        if (controlsOverlay) { 
+            controlsOverlay.addEventListener('mouseenter', () => {
+                clearTimeout(controlsActivityTimer); 
+                showPlayerControls(true); 
+            });
+            controlsOverlay.addEventListener('mouseleave', () => {
+                showPlayerControls(); 
+            });
+        }
+
+        // --- Core Player Actions ---
+        function togglePlayPause() {
+            if(!video) return;
+            if(video.readyState < video.HAVE_METADATA && !video.src && videoSrc) { 
+              loadMedia(); 
+              return; 
+            }
+            if(video.paused || video.ended) {
+              video.play().catch(err => showError(`Playback failed: ${err.message || 'Unknown error'}`, true));
+            } else {
+              video.pause();
+            }
+        }
+
+        function toggleFullscreen() {
+            if(!playerContainer) return;
+            if(!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement)) {
+              if(playerContainer.requestFullscreen) playerContainer.requestFullscreen().catch(err => showError(`Fullscreen failed: ${err.message || 'Unknown error'}`));
+              else if(playerContainer.webkitRequestFullscreen) playerContainer.webkitRequestFullscreen();
+              else if(playerContainer.mozRequestFullScreen) playerContainer.mozRequestFullScreen(); 
+              else if(playerContainer.msRequestFullscreen) playerContainer.msRequestFullscreen(); 
+            } else {
+              if(document.exitFullscreen) document.exitFullscreen().catch(err => showError(`Exit Fullscreen failed: ${err.message || 'Unknown error'}`));
+              else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
+              else if(document.mozCancelFullScreen) document.mozCancelFullScreen();
+              else if(document.msExitFullscreen) document.msExitFullscreen();
+            }
+        }
+
+        function toggleMute() { 
+            if(!video) return;
+            video.muted = !video.muted;
+            if(!video.muted && video.volume < 0.02) {
+                video.volume = lastVolume > 0.01 ? lastVolume : 0.5; 
+            }
+            showNotifier(video.muted ? 'Muted' : `Volume: ${Math.round(video.volume * 100)}%`);
+            updateVolumeUI(); 
+        }
+
+        function handleVolumeChange() { 
+            if(!video) return;
+            if(!video.muted && video.volume > 0.01) { 
+                lastVolume = video.volume;
+            }
+            updateVolumeUI();
+        }
+
+        function togglePip() {
+            if(!video || !pipBtn) return;
+            if(!document.pictureInPictureEnabled || video.disablePictureInPicture) { 
+                showNotifier("Picture-in-Picture is not supported or disabled for this media."); 
+                return; 
+            }
+            if(document.pictureInPictureElement === video) {
+                document.exitPictureInPicture().catch(err => showError(`Could not exit PiP: ${err.message || 'Unknown error'}`));
+            } else {
+                video.requestPictureInPicture().catch(err => showError(`Could not enter PiP: ${err.message || 'Unknown error'}`));
+            }
+        }
+
+        function toggleLoop() {
+            if(!video) return;
+            video.loop = !video.loop;
+            showNotifier(video.loop ? 'Loop Enabled' : 'Loop Disabled');
+            updateLoopToggleUI();
+        }
+        
+        // --- Menu Management ---
+        function toggleMenu(menuElement, buttonElement, isOpenStateKey) {
+            if (!menuElement || !buttonElement) return;
+            const shouldOpen = !window[isOpenStateKey]; 
+            
+            // Close other open menus/sliders
+            if (shouldOpen) { 
+                clearTimeout(controlsActivityTimer); 
+                if (activeMenu && activeMenu !== menuElement) { 
+                    activeMenu.classList.remove('show');
+                    const activeBtn = document.querySelector(`[aria-controls="${activeMenu.id}"]`);
+                    if (activeBtn) activeBtn.setAttribute('aria-expanded', 'false');
+                    if (activeMenu === speedMenu) isSpeedMenuOpen = false;
+                    if (activeMenu === qualityMenu) isQualityMenuOpen = false;
+                }
+                if (volumeSliderWrapper?.classList.contains('active')) { 
+                    volumeSliderWrapper.classList.remove('active');
+                    if(volumeBtn) volumeBtn.setAttribute('aria-expanded', 'false');
+                }
+                // Close nerd stats if open
+                if (isNerdStatsOpen) {
+                    toggleNerdStats(); // This will handle its own state and interval
+                }
+            } else {
+                showPlayerControls(); 
+            }
+
+            menuElement.classList.toggle('show', shouldOpen);
+            buttonElement.setAttribute('aria-expanded', shouldOpen.toString());
+            menuElement.setAttribute('aria-hidden', (!shouldOpen).toString());
+            window[isOpenStateKey] = shouldOpen; 
+            activeMenu = shouldOpen ? menuElement : null;
+
+            // Manage focus for accessibility
+            if (shouldOpen) {
+                // Find first focusable element in menu (e.g., first menu item) and focus it
+                const firstMenuItem = menuElement.querySelector('[role="menuitemradio"], [role="menuitem"]');
+                if (firstMenuItem) {
+                    firstMenuItem.focus();
+                }
+            } else {
+                buttonElement.focus(); // Return focus to the button that opened the menu
+            }
+        }
+        
+        // --- Quality & Speed Logic ---
+        function populateAndSetQualityMenu(manifestLevels) {
+            if(!qualityMenu || !qualityBtn || !hls) return;
+            qualityMenu.innerHTML = ''; 
+            const availableLevels = manifestLevels || (hls.levels || []); 
+
+            const autoItem = document.createElement('div');
+            autoItem.className = 'menu-item'; autoItem.setAttribute('role', 'menuitemradio');
+            autoItem.dataset.level = "-1"; autoItem.textContent = "Auto";
+            autoItem.setAttribute('aria-checked', 'false'); 
+            autoItem.setAttribute('tabindex', '0'); // Make focusable
+            autoItem.innerHTML = `<span class="material-icons">check</span>Auto`; // Add check icon slot
+            autoItem.addEventListener('click', (e) => { createRipple(e); selectQualityLevel(autoItem, -1); });
+            qualityMenu.appendChild(autoItem);
+
+            if (availableLevels.length === 0) { 
+                qualityBtn.style.display = 'none'; 
+                autoItem.classList.add('selected'); autoItem.setAttribute('aria-checked', 'true');
+                return;
+            }
+            qualityBtn.style.display = 'flex';
+
+            // Sort levels by height in descending order, then by bitrate if height is same
+            availableLevels.sort((a, b) => {
+                if (a.height && b.height) {
+                    return b.height - a.height;
+                }
+                if (a.bitrate && b.bitrate) {
+                    return b.bitrate - a.bitrate;
+                }
+                return 0;
+            });
+
+            availableLevels.forEach((level, index) => {
+              const item = document.createElement('div');
+              item.className = 'menu-item'; item.setAttribute('role', 'menuitemradio');
+              item.setAttribute('aria-checked', 'false'); 
+              item.dataset.level = hls.levels.indexOf(level).toString(); // Use original HLS index
+              item.setAttribute('tabindex', '0'); // Make focusable
+              
+              let qualityText = level.height ? `${level.height}p` : (level.bitrate ? `${Math.round(level.bitrate/1000)}kbps` : `Level ${hls.levels.indexOf(level) + 1}`);
+              if(level.height && level.bitrate && Math.round(level.bitrate/1000) > 50 && level.height < 2000) { 
+                qualityText += ` (${Math.round(level.bitrate/1000)}kbps)`;
+              }
+              item.innerHTML = `<span class="material-icons">check</span>${qualityText}`; // Add check icon slot
+              item.addEventListener('click', (e) => { createRipple(e); selectQualityLevel(item, parseInt(item.dataset.level)); });
+              qualityMenu.appendChild(item);
+            });
+
+            const currentHlsLevelIndex = hls.currentLevel; 
+            const activeQualityItem = qualityMenu.querySelector(`.menu-item[data-level="${currentHlsLevelIndex}"]`);
+            
+            if (activeQualityItem) { 
+                activeQualityItem.classList.add('selected'); 
+                activeQualityItem.setAttribute('aria-checked', 'true');
+            } else { 
+                autoItem.classList.add('selected'); 
+                autoItem.setAttribute('aria-checked', 'true');
+            }
+        }
+
+        function selectQualityLevel(clickedItem, levelIndex) { 
+            if (!hls || !qualityMenu) return;
+            
+            qualityMenu.querySelectorAll('.menu-item').forEach(el => {
+                el.classList.remove('selected'); 
+                el.setAttribute('aria-checked', 'false');
+            });
+            clickedItem.classList.add('selected'); 
+            clickedItem.setAttribute('aria-checked', 'true');
+            
+            hls.currentLevel = levelIndex; 
+            const qualityLabel = clickedItem.textContent.replace('check', '').trim().split(' (')[0]; // Remove "check" and trim
+            showNotifier(`Quality set to ${qualityLabel}`); 
+        }
+        
+        // --- Media Loading & Reset ---
+        function resetPlayerStateForNewUrl() {
+            if (!video) return;
+            clearError(); 
+            if (hls) { hls.destroy(); hls = null; } 
+            
+            video.pause(); 
+            video.removeAttribute('src'); 
+            if (typeof video.load === 'function') video.load(); 
+            
+            toggleLoading(false); 
+            if(currentTimeEl) currentTimeEl.textContent = '0:00'; 
+            if(durationEl) durationEl.textContent = '0:00';
+            if(seekbar) {
+              seekbar.value = 0; 
+              seekbar.style.setProperty('--seekbar-fill', `0%`);
+              seekbar.setAttribute('aria-valuenow', '0');
+              seekbar.setAttribute('aria-valuetext', '0:00');
+            }
+            if(seekbarBufferedProgress) seekbarBufferedProgress.style.width = '0%';
+            
+            updatePlayPauseUI(); 
+            if(qualityBtn) qualityBtn.style.display = 'none'; 
+            if(qualityMenu) { 
+                qualityMenu.innerHTML = '<div class="menu-item selected" role="menuitemradio" aria-checked="true" data-level="-1" tabindex="0"><span class="material-icons">check</span>Auto</div>';
+                const autoItem = qualityMenu.querySelector('.menu-item[data-level="-1"]');
+                if(autoItem) autoItem.addEventListener('click', (e) => { createRipple(e); selectQualityLevel(autoItem, -1);});
+            }
+            
+            // Close any open menus
+            if (isQualityMenuOpen && qualityMenu && qualityBtn) toggleMenu(qualityMenu, qualityBtn, 'isQualityMenuOpen');
+            if (isSpeedMenuOpen && speedMenu && speedBtn) toggleMenu(speedMenu, speedBtn, 'isSpeedMenuOpen');
+            if (isNerdStatsOpen) toggleNerdStats(); // Close nerd stats
+
+            video.playbackRate = 1; 
+            updateSpeedIndicator();
+            if(speedMenu) { 
+                speedMenu.querySelectorAll('.menu-item').forEach(el => {el.classList.remove('selected'); el.setAttribute('aria-checked', 'false');});
+                const defaultSpeedItem = speedMenu.querySelector('.menu-item[data-speed="1"]');
+                if (defaultSpeedItem) { defaultSpeedItem.classList.add('selected'); defaultSpeedItem.setAttribute('aria-checked', 'true');}
+            }
+            if(video.loop) video.loop = false; 
+            updateLoopToggleUI();
+        }
+
+        function loadMedia() {
+            if (!video || !videoSrc) { showError("Video element or source URL missing."); return; }
+            resetPlayerStateForNewUrl(); 
+            toggleLoading(true, 'Loading...');
+            
+            const urlLower = videoSrc.toLowerCase().trim();
+
+            if (urlLower.includes('.m3u8')) {
+              if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+                hls = new Hls({
+                    enableWorker: true, 
+                    lowLatencyMode: urlLower.includes('ll-hls'),
+                    manifestLoadingMaxRetry: 5,
+                    levelLoadingMaxRetry: 5,
+                    // Additional HLS.js config can go here
+                });
+                hls.loadSource(videoSrc); 
+                hls.attachMedia(video);
+                
+                hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => { 
+                    toggleLoading(false); 
+                    populateAndSetQualityMenu(data.levels); 
+                    showNotifier('Video ready to play'); 
+                    clearError(); 
+                });
+                hls.on(Hls.Events.ERROR, (event, data) => {
+                  console.error('HLS Error:', data); 
+                  let msg = `HLS Error (Type: ${data.type}).`;
+                  if (data.details) msg += ` Details: ${data.details}.`;
+                  
+                  if (data.type === Hls.ErrorTypes.NETWORK_ERROR && !navigator.onLine) {
+                    msg = "Network error while offline. Please check connection.";
+                  }
+
+                  if (data.fatal) { 
+                    toggleLoading(false); 
+                    showError(msg, data.type === Hls.ErrorTypes.NETWORK_ERROR || data.type === Hls.ErrorTypes.MEDIA_ERROR); 
+                    if(qualityBtn) qualityBtn.style.display = 'none'; 
+                    if(hls) { hls.destroy(); hls = null; } // Destroy HLS instance on fatal error
+                  } else { 
+                    console.warn("Non-fatal HLS Error:", msg); 
+                  }
+                });
+                hls.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
+                    if(!hls || !qualityMenu || !hls.levels || data.level === undefined) return; 
+                    const levelIndex = data.level; 
+                    const level = hls.levels[levelIndex]; 
+                    
+                    let qualityLabel = 'Auto';
+                    if(level) { 
+                        qualityLabel = level.height ? level.height + 'p' : (level.bitrate ? Math.round(level.bitrate/1000) + 'kbps' : `Level ${levelIndex + 1}`);
+                    }
+                    showNotifier(`Quality updated to ${qualityLabel}`);
+                    
+                    qualityMenu.querySelectorAll('.menu-item').forEach(el => {el.classList.remove('selected'); el.setAttribute('aria-checked', 'false');});
+                    const activeSwitchedItem = qualityMenu.querySelector(`.menu-item[data-level="${levelIndex}"]`);
+                    if (activeSwitchedItem) { 
+                        activeSwitchedItem.classList.add('selected'); 
+                        activeSwitchedItem.setAttribute('aria-checked', 'true');
+                    } else { 
+                         const autoItem = qualityMenu.querySelector('.menu-item[data-level="-1"]');
+                         if(autoItem) {autoItem.classList.add('selected'); autoItem.setAttribute('aria-checked', 'true');}
+                    }
+                });
+                // Capture buffer progress more accurately during HLS loading
+                hls.on(Hls.Events.BUFFER_APPENDED, () => {
+                    updateSeekbar(); 
+                    if (video.buffered.length > 0 && video.duration > 0 && isFinite(video.duration)) {
+                        try {
+                            const bufferedEnd = video.buffered.end(video.buffered.length - 1);
+                            const percentBuffered = (bufferedEnd / video.duration) * 100;
+                            if (loadingOverlay?.classList.contains('show')) {
+                                toggleLoading(true, `Buffering... ${Math.min(100, Math.round(percentBuffered))}%`);
+                            }
+                        } catch (e) { /* ignore */ }
+                    }
+                });
+              } else if (video.canPlayType('application/vnd.apple.mpegurl') || video.canPlayType('audio/mpegurl')) { 
+                video.src = videoSrc; 
+                if(qualityBtn) qualityBtn.style.display='none';
+                showNotifier('Using native HLS playback'); 
+                clearError();
+              } else { 
+                toggleLoading(false); 
+                showError('HLS playback is not supported by your browser or HLS.js could not be loaded.'); 
+                if(qualityBtn) qualityBtn.style.display='none';
+              }
+            } else if (urlLower.endsWith('.mp4') || urlLower.endsWith('.webm') || urlLower.endsWith('.ogv') || 
+                       video.canPlayType('video/mp4') || video.canPlayType('video/webm') || video.canPlayType('video/ogg')) { 
+              if (hls) { hls.destroy(); hls = null; } 
+              if (qualityBtn) qualityBtn.style.display = 'none'; 
+              video.src = videoSrc;
+              clearError();
+            } else { 
+              toggleLoading(false); 
+              showError("Unsupported video URL or format.");
+              if (qualityBtn) qualityBtn.style.display = 'none';
+            }
+        }
+
+        // --- Nerd Stats Functionality ---
+        function updateNerdStats() {
+            if (!nerdStatsOverlay || !video) return;
+
+            let statsText = '--- Video Stats ---\n';
+            statsText += `URL: ${videoSrc.length > 60 ? videoSrc.substring(0, 57) + '...' : videoSrc}\n`;
+            statsText += `Playback State: ${video.paused ? 'Paused' : 'Playing'} / ${video.readyState >= 3 ? 'Ready' : 'Buffering'}\n`;
+            statsText += `Time: ${formatTime(video.currentTime)} / ${formatTime(video.duration)}\n`;
+            statsText += `Volume: ${video.muted ? 'Muted' : (video.volume * 100).toFixed(0) + '%'}\n`;
+            statsText += `Playback Speed: ${video.playbackRate}x\n`;
+            statsText += `Buffered: ${video.buffered.length > 0 ? formatTime(video.buffered.end(video.buffered.length - 1)) : '0:00'} / ${formatTime(video.duration)}\n`;
+            statsText += `Dropped Frames: ${video.webkitDroppedFrameCount || video.mozDroppedFrameCount || 'N/A'}\n`;
+            statsText += `Video Resolution: ${video.videoWidth}x${video.videoHeight}\n`;
+            statsText += `Video Codec: ${video.videoTracks && video.videoTracks.length > 0 ? video.videoTracks[0].codec : 'N/A'}\n`;
+            statsText += `Audio Codec: ${video.audioTracks && video.audioTracks.length > 0 ? video.audioTracks[0].codec : 'N/A'}\n`;
+            
+            if (hls) {
+                statsText += '\n--- HLS.js Stats ---\n';
+                statsText += `Version: ${Hls.version}\n`;
+                statsText += `Current Level: ${hls.currentLevel === -1 ? 'Auto' : hls.currentLevel} (${hls.levels[hls.currentLevel]?.height || 'N/A'}p)\n`;
+                statsText += `Load Level: ${hls.loadLevel === -1 ? 'Auto' : hls.loadLevel} (${hls.levels[hls.loadLevel]?.height || 'N/A'}p)\n`;
+                statsText += `Next Load Level: ${hls.nextLoadLevel === -1 ? 'Auto' : hls.nextLoadLevel} (${hls.levels[hls.nextLoadLevel]?.height || 'N/A'}p)\n`;
+                statsText += `Buffer Appended: ${(hls.totalBufferLen || 0).toFixed(2)}s\n`;
+                statsText += `Bandwidth Est: ${(hls.bandwidthEstimate / 1000).toFixed(0)} kbps\n`;
+                if (hls.latency) {
+                    statsText += `Latency: ${hls.latency.toFixed(2)}s\n`;
+                }
+                if (hls.m3u8LoadedTime) {
+                    statsText += `Manifest Load Time: ${((Date.now() - hls.m3u8LoadedTime) / 1000).toFixed(2)}s ago\n`;
+                }
+                if (hls.stats && hls.stats.buffered) {
+                    statsText += `HLS Buffered: ${(hls.stats.buffered.end - hls.stats.buffered.start).toFixed(2)}s\n`;
+                }
+                // Add more HLS.js stats as needed, e.g., current segment, download speed etc.
+                // You can explore `hls.levelController.currentLevel` or `hls.liveSyncController` for more details.
+            }
+
+            nerdStatsOverlay.textContent = statsText;
+        }
+
+        function toggleNerdStats() {
+            isNerdStatsOpen = !isNerdStatsOpen;
+            if (nerdStatsOverlay) {
+                nerdStatsOverlay.classList.toggle('show', isNerdStatsOpen);
+                nerdStatsOverlay.setAttribute('aria-hidden', (!isNerdStatsOpen).toString());
+            }
+
+            if (isNerdStatsOpen) {
+                updateNerdStats(); // Initial update
+                nerdStatsInterval = setInterval(updateNerdStats, 1000); // Update every second
+                clearTimeout(controlsActivityTimer); // Keep controls visible when stats open
+                showPlayerControls(true);
+                // Close other open menus/sliders
+                if (activeMenu) { 
+                    const menuToClose = activeMenu; 
+                    const btnForMenu = document.querySelector(`[aria-controls="${menuToClose.id}"]`);
+                    const stateKey = menuToClose === speedMenu ? 'isSpeedMenuOpen' : 'isQualityMenuOpen';
+                    if (btnForMenu) toggleMenu(menuToClose, btnForMenu, stateKey); 
+                }
+                if (volumeSliderWrapper?.classList.contains('active')) { 
+                    volumeSliderWrapper.classList.remove('active');
+                    if(volumeBtn) volumeBtn.setAttribute('aria-expanded', 'false');
+                }
+
+            } else {
+                clearInterval(nerdStatsInterval);
+                nerdStatsInterval = null;
+                showPlayerControls(); // Restart fade timer
+            }
+        }
+
+        // --- Event Listeners Setup (Universal Ripple first) ---
+        document.querySelectorAll('.btn, .btn-load').forEach(interactiveElement => {
+            if (interactiveElement) interactiveElement.addEventListener('click', createRipple);
+        });
+        speedMenu?.querySelectorAll('.menu-item').forEach(item => item.addEventListener('click', createRipple));
+        // Ripple for quality menu items is added when they are populated.
+
+
+        playPauseBtn?.addEventListener('click', () => { togglePlayPause(); showPlayerControls(); });
+        fullscreenBtn?.addEventListener('click', () => { toggleFullscreen(); showPlayerControls(); });
+        loopBtn?.addEventListener('click', () => { toggleLoop(); showPlayerControls(); });
+        
+        speedBtn?.addEventListener('click', () => { 
+            if(speedMenu && speedBtn) toggleMenu(speedMenu, speedBtn, 'isSpeedMenuOpen'); 
+        });
+        qualityBtn?.addEventListener('click', () => { 
+            if(qualityMenu && qualityBtn) toggleMenu(qualityMenu, qualityBtn, 'isQualityMenuOpen'); 
+        });
+        nerdStatsBtn?.addEventListener('click', () => {
+            toggleNerdStats();
+            showPlayerControls(isNerdStatsOpen); // Keep controls visible if stats are open
+        });
+        
+        video?.addEventListener('click', (e) => { 
+            // Only toggle play/pause if click is directly on video AND no menus are open
+            if (e.target === video && !activeMenu && !volumeSliderWrapper?.classList.contains('active') &&
+                !isNerdStatsOpen &&
+                !speedMenu?.classList.contains('show') && !qualityMenu?.classList.contains('show') ) { 
+                togglePlayPause(); 
+                showPlayerControls(); 
+            } 
+        });
+
+        volumeBtn?.addEventListener('click', () => { 
+            if (volumeSliderWrapper && volumeBtn) {
+                const isSliderShown = volumeSliderWrapper.classList.toggle('active');
+                volumeBtn.setAttribute('aria-expanded', isSliderShown.toString());
+                if (isSliderShown) { 
+                    clearTimeout(controlsActivityTimer);
+                    // Close other menus if volume slider opens
+                    if (activeMenu) { 
+                        const menuToClose = activeMenu; 
+                        const btnForMenu = document.querySelector(`[aria-controls="${menuToClose.id}"]`);
+                        const stateKey = menuToClose === speedMenu ? 'isSpeedMenuOpen' : 'isQualityMenuOpen';
+                        if (btnForMenu) toggleMenu(menuToClose, btnForMenu, stateKey); 
+                    }
+                    if (isNerdStatsOpen) toggleNerdStats(); // Close nerd stats
+                } else {
+                    showPlayerControls(); 
+                }
+            }
+            showPlayerControls(volumeSliderWrapper?.classList.contains('active')); 
+        });
+
+        volumeRangeSlider?.addEventListener('input', () => { 
+            if(!video) return;
+            let v = parseFloat(volumeRangeSlider.value);
+            if(v < 0.01) { 
+                v = 0; 
+                if(!video.muted) video.muted = true; 
+            } else {
+                if(video.muted) video.muted = false; 
+            }
+            video.volume = v; 
+            clearTimeout(controlsActivityTimer); 
+        });
+        volumeRangeSlider?.addEventListener('change', () => { 
+            if(!video) return;
+            showNotifier(video.muted ? 'Muted' : `Volume: ${Math.round(video.volume*100)}%`); 
+            showPlayerControls(); 
+        });
+
+        // Seekbar interaction
+        seekbar?.addEventListener('mousedown', () => {
+            isSeeking = true;
+            clearTimeout(controlsActivityTimer); 
+            showPlayerControls(true); 
+        });
+        seekbar?.addEventListener('input', () => {
+            if (!video || isNaN(video.duration) || video.duration <= 0) return;
+            const seekbarValue = parseFloat(seekbar.value);
+            if(currentTimeEl) currentTimeEl.textContent = formatTime((seekbarValue / 100) * video.duration);
+            seekbar.style.setProperty('--seekbar-fill', `${seekbarValue}%`);
+            clearTimeout(controlsActivityTimer); 
+        });
+        seekbar?.addEventListener('change', () => {
+            if (!video || isNaN(video.duration) || video.duration <= 0) {
+                isSeeking = false;
+                showPlayerControls();
+                return;
+            }
+            const seekTime = (parseFloat(seekbar.value) / 100) * video.duration;
+            video.currentTime = seekTime;
+            isSeeking = false;
+            showNotifier(`Seeked to ${formatTime(video.currentTime)}`);
+            showPlayerControls();
+            updateSeekbar(); 
+        });
+        document.addEventListener('mouseup', () => { 
+            if (isSeeking) {
+                isSeeking = false;
+                showPlayerControls(); 
+                if (seekbar && video && !isNaN(video.duration) && video.duration > 0) {
+                    const seekTime = (parseFloat(seekbar.value) / 100) * video.duration;
+                    if (Math.abs(video.currentTime - seekTime) > 0.5) { 
+                        video.currentTime = seekTime;
+                         showNotifier(`Seeked to ${formatTime(video.currentTime)}`);
+                    }
+                }
+                updateSeekbar();
+            }
+        });
+
+
+        if (seekbarContainer && seekbarTooltip) {
+            seekbarContainer.addEventListener('mousemove', (e) => {
+              if(!video||isNaN(video.duration)||video.duration <= 0){ 
+                if (seekbarTooltip) {
+                    seekbarTooltip.classList.remove('visible');
+                }
+                return;
+              }
+              const r=seekbarContainer.getBoundingClientRect();
+              const x=e.clientX-r.left; 
+              const p=Math.max(0,Math.min(1,x/r.width)); 
+              
+              seekbarTooltip.textContent=formatTime(p*video.duration); 
+              
+              const tooltipWidth = seekbarTooltip.offsetWidth;
+              let tooltipLeft = x - (tooltipWidth / 2);
+              tooltipLeft = Math.max(0, Math.min(tooltipLeft, r.width - tooltipWidth)); 
+              
+              seekbarTooltip.style.left=`${tooltipLeft}px`;
+              seekbarTooltip.classList.add('visible');
+            });
+            seekbarContainer.addEventListener('mouseleave', () => {
+                if (seekbarTooltip) seekbarTooltip.classList.remove('visible');
+            });
+        }
+
+        speedMenu?.querySelectorAll('.menu-item').forEach(item => {
+            item.addEventListener('click', () => { 
+              if(!video || !speedBtn || !speedMenu) return; 
+              const newSpeed = parseFloat(item.dataset.speed);
+              video.playbackRate = newSpeed;
+              speedMenu.querySelectorAll('.menu-item').forEach(el=>{el.classList.remove('selected');el.setAttribute('aria-checked','false');});
+              item.classList.add('selected');item.setAttribute('aria-checked','true');
+              
+              updateSpeedIndicator(); 
+              const speedLabel = item.textContent.replace('check', '').trim() === 'Normal' ? '1x (Normal)' : item.textContent.replace('check', '').trim();
+              showNotifier(`Playback speed: ${speedLabel}`);
+              toggleMenu(speedMenu, speedBtn, 'isSpeedMenuOpen'); 
+            });
+        });
+
+        pipBtn?.addEventListener('click', () => { togglePip(); showPlayerControls(); });
+
+        // --- Video Element Event Listeners ---
+        if (video) {
+            video.addEventListener('play', ()=>{updatePlayPauseUI();showNotifier('Playing');toggleLoading(false); showPlayerControls(); clearError();});
+            video.addEventListener('pause', ()=>{updatePlayPauseUI();toggleLoading(false);clearTimeout(controlsActivityTimer); showPlayerControls(true);});
+            video.addEventListener('ended', ()=>{updatePlayPauseUI();showNotifier('Video Ended');toggleLoading(false);clearTimeout(controlsActivityTimer); showPlayerControls(true); if(video.loop&&video.duration>0 && isFinite(video.duration))video.play().catch(e => console.warn("Loop playback error:", e));});
+            video.addEventListener('timeupdate', updateSeekbar);
+            video.addEventListener('loadedmetadata', ()=>{
+                if(durationEl && video.duration && isFinite(video.duration)) durationEl.textContent=formatTime(video.duration);
+                updateSeekbar();updateVolumeUI();updateSpeedIndicator();
+                updateLoopToggleUI();updatePipButtonUI();updateFullscreenUI();
+                toggleLoading(false); 
+                clearError(); 
+            });
+            video.addEventListener('volumechange', handleVolumeChange);
+            video.addEventListener('ratechange', updateSpeedIndicator); 
+            video.addEventListener('waiting', ()=>toggleLoading(true,'Buffering...')); 
+            video.addEventListener('seeking', ()=> { if(!isSeeking) toggleLoading(true,'Seeking...'); }); 
+            video.addEventListener('seeked', ()=>{ if(!isSeeking) toggleLoading(false); updateSeekbar();}); 
+            video.addEventListener('playing', ()=>{toggleLoading(false);updateSeekbar(); clearError(); }); 
+            video.addEventListener('canplay', ()=>toggleLoading(false)); 
+            video.addEventListener('progress', ()=>{
+                updateSeekbar(); 
+                // Removed redundant progress update here as HLS.Events.BUFFER_APPENDED is now used
+            });
+            video.addEventListener('error', ()=>{
+                toggleLoading(false);
+                const err = video.error;
+                let errMsg = 'An unknown media error occurred.';
+                let isNetworkOrMediaError = false;
+                if (err) { 
+                    isNetworkOrMediaError = (err.code === MediaError.MEDIA_ERR_NETWORK || err.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED || err.code === MediaError.MEDIA_ERR_DECODE);
+                    errMsg = `Error Code ${err.code}: `;
+                    switch (err.code) {
+                        case MediaError.MEDIA_ERR_ABORTED: errMsg += 'Playback aborted.'; break;
+                        case MediaError.MEDIA_ERR_NETWORK: errMsg += navigator.onLine ? 'A network error occurred.' : 'Network unavailable.'; break;
+                        case MediaError.MEDIA_ERR_DECODE: errMsg += 'Media decoding error.'; break;
+                        case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED: errMsg += 'Media source not supported.'; break;
+                        default: errMsg += (err.message || 'Unknown detail.'); break;
+                    }
+                }
+                showError(errMsg, isNetworkOrMediaError);
+                if(hls){hls.destroy();hls=null;} 
+                if(qualityBtn)qualityBtn.style.display='none'; 
+            });
+            video.addEventListener('enterpictureinpicture', ()=>{updatePipButtonUI();showNotifier('Entered Picture-in-Picture');});
+            video.addEventListener('leavepictureinpicture', ()=>{updatePipButtonUI();showNotifier('Exited Picture-in-Picture');});
+        }
+
+        // --- Document & Global Event Listeners ---
+        ['fullscreenchange','webkitfullscreenchange','mozfullscreenchange','MSFullscreenChange'].forEach(evt => 
+            document.addEventListener(evt,()=>{
+                const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+                updateFullscreenUI(); 
+                showPlayerControls(video?.paused); 
+                if(!isFs && playerContainer) playerContainer.classList.remove('cursor-hidden'); 
+            })
+        );
+        
+        document.addEventListener('click',(e)=>{ 
+            const target = e.target;
+            // Close menus if click is outside
+            if (activeMenu && !activeMenu.contains(target)) {
+                const controllingButton = document.querySelector(`[aria-controls="${activeMenu.id}"]`);
+                if (controllingButton && !controllingButton.contains(target)) {
+                    const stateKey = activeMenu === speedMenu ? 'isSpeedMenuOpen' : 'isQualityMenuOpen';
+                    toggleMenu(activeMenu, controllingButton, stateKey); 
+                }
+            }
+            // Close volume slider
+            const clickedInsideVolumeArea = volumeBtn?.contains(target) || volumeSliderWrapper?.contains(target);
+            if (volumeSliderWrapper?.classList.contains('active') && !clickedInsideVolumeArea) {
+                volumeSliderWrapper.classList.remove('active'); 
+                if (volumeBtn) volumeBtn.setAttribute('aria-expanded', 'false');
+                showPlayerControls();
+            }
+            // Close nerd stats if click is outside
+            if (isNerdStatsOpen && nerdStatsOverlay && nerdStatsBtn && 
+                !nerdStatsOverlay.contains(target) && !nerdStatsBtn.contains(target)) {
+                toggleNerdStats();
+            }
+        });
+
+        document.addEventListener('keydown',(e)=>{
+            const isPlayerFocused = playerContainer && playerContainer.contains(document.activeElement);
+            const isBodyFocused = document.activeElement === document.body;
+            const isCustomUrlInputFocused = document.activeElement === customUrlInput;
+
+            // Only act if video is present and key is not for generic input fields unless it's for player control
+            if (!video || (!isPlayerFocused && !isBodyFocused && !isCustomUrlInputFocused)) {
+                if(e.key === 'Escape' && (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement)){
+                     // Allow fullscreen exit by toggleFullscreen
+                } else {
+                    return; 
+                }
+            }
+            showPlayerControls(); 
+
+            const activeEl = document.activeElement;
+            const isGenericInputFocused = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
+            if(isGenericInputFocused && activeEl !== customUrlInput && e.key !== 'Escape') return;
+            if(activeEl === customUrlInput && e.key !== 'Escape' && e.key !== 'Enter') return;
+
+            let preventDefault = true; 
+            let notifyMsg = '';
+
+            switch(e.key.toLowerCase()){ 
+              case' ': case'k': 
+                if(activeEl && activeEl.tagName === 'BUTTON' && !e.altKey && !e.ctrlKey) { preventDefault = false; break; } 
+                togglePlayPause(); 
+                break;
+              case'f': 
+                if(fullscreenBtn) fullscreenBtn.click(); else preventDefault = false;
+                break;
+              case'm': 
+                toggleMute(); 
+                break;
+              case'arrowleft': 
+                if(activeEl === seekbar || activeEl === volumeRangeSlider || (e.shiftKey && activeEl.closest('.menu-item')) || (e.altKey && activeEl.closest('.menu-item'))) { preventDefault = false; break; } // Allow native slider control or menu item navigation
+                if(!video.duration||!isFinite(video.duration)||video.duration <= 0){preventDefault=false;break;}
+                video.currentTime=Math.max(0,video.currentTime-5); 
+                notifyMsg=`Seeked back 5s`;
+                updateSeekbar(); 
+                break;
+              case'arrowright': 
+                if(activeEl === seekbar || activeEl === volumeRangeSlider || (e.shiftKey && activeEl.closest('.menu-item')) || (e.altKey && activeEl.closest('.menu-item'))) { preventDefault = false; break; }
+                if(!video.duration||!isFinite(video.duration)||video.duration <= 0){preventDefault=false;break;}
+                video.currentTime=Math.min(video.duration,video.currentTime+5); 
+                notifyMsg=`Seeked forward 5s`;
+                updateSeekbar(); 
+                break;
+              case'arrowup': 
+                if(activeEl === volumeRangeSlider || (activeEl?.closest && activeEl.closest('#volumeSliderWrapper'))) { preventDefault = false; break; }
+                if(activeMenu) { // Handle menu item navigation
+                    const currentItem = document.activeElement;
+                    if(currentItem && currentItem.classList.contains('menu-item')) {
+                        const prevItem = currentItem.previousElementSibling;
+                        if(prevItem && prevItem.classList.contains('menu-item')) prevItem.focus();
+                        else if(currentItem.parentNode.lastElementChild && currentItem.parentNode.lastElementChild.classList.contains('menu-item')) currentItem.parentNode.lastElementChild.focus(); // Wrap around
+                    } else { // No item focused in menu, focus first
+                        const firstItem = activeMenu.querySelector('.menu-item');
+                        if (firstItem) firstItem.focus();
+                    }
+                    preventDefault = true;
+                    break;
+                }
+                video.volume=Math.min(1,video.volume+0.05); 
+                if(video.muted && video.volume > 0.01) video.muted=false; 
+                notifyMsg=`Volume: ${Math.round(video.volume*100)}%`;
+                break;
+              case'arrowdown': 
+                if(activeEl === volumeRangeSlider || (activeEl?.closest && activeEl.closest('#volumeSliderWrapper'))) { preventDefault = false; break; }
+                if(activeMenu) { // Handle menu item navigation
+                    const currentItem = document.activeElement;
+                    if(currentItem && currentItem.classList.contains('menu-item')) {
+                        const nextItem = currentItem.nextElementSibling;
+                        if(nextItem && nextItem.classList.contains('menu-item')) nextItem.focus();
+                        else if(currentItem.parentNode.firstElementChild && currentItem.parentNode.firstElementChild.classList.contains('menu-item')) currentItem.parentNode.firstElementChild.focus(); // Wrap around
+                    } else { // No item focused in menu, focus first
+                        const firstItem = activeMenu.querySelector('.menu-item');
+                        if (firstItem) firstItem.focus();
+                    }
+                    preventDefault = true;
+                    break;
+                }
+                video.volume=Math.max(0,video.volume-0.05); 
+                if (video.volume < 0.01 && !video.muted) video.muted=true; 
+                notifyMsg=video.muted?'Muted':`Volume: ${Math.round(video.volume*100)}%`;
+                break;
+              case'escape':
+                if(activeEl === customUrlInput) { customUrlInput.blur(); preventDefault = true; break;} 
+                if(activeMenu){ 
+                    const btnForMenu = document.querySelector(`[aria-controls="${activeMenu.id}"]`);
+                    const stateKey = activeMenu === speedMenu ? 'isSpeedMenuOpen' : 'isQualityMenuOpen';
+                    if(btnForMenu) toggleMenu(activeMenu, btnForMenu, stateKey);
+                } else if(volumeSliderWrapper?.classList.contains('active')){ 
+                    volumeSliderWrapper.classList.remove('active');
+                    if(volumeBtn)volumeBtn.setAttribute('aria-expanded','false');
+                    showPlayerControls(); 
+                } else if (isNerdStatsOpen) {
+                    toggleNerdStats();
+                } else if(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement) { 
+                    toggleFullscreen();
+                } else {
+                    preventDefault = false; 
+                }
+                break;
+              case'p':
+                if(document.pictureInPictureEnabled && pipBtn && pipBtn.style.display!=='none') togglePip();
+                else preventDefault = false;
+                break;
+              case'l':
+                toggleLoop();
+                break;
+              case's': // 's' for stats
+                if (nerdStatsBtn) toggleNerdStats();
+                else preventDefault = false;
+                break;
+              case't': // 't' for quality (if 's' is taken for stats)
+                 if(qualityBtn) qualityBtn.click();
+                 else preventDefault = false;
+                 break;
+              case'd': // 'd' for speed
+                if(speedBtn) speedBtn.click();
+                else preventDefault = false;
+                break;
+              default:
+                if(e.key >= '0' && e.key <= '9' && e.key !== ' '){ 
+                    if(activeEl === seekbar || isGenericInputFocused) { preventDefault = false; break; } 
+                    if(!video.duration||!isFinite(video.duration)||video.duration <= 0){preventDefault=false;break;}
+                    const percent = parseInt(e.key)*10;
+                    video.currentTime=(percent/100)*video.duration;
+                    notifyMsg=`Seeked to ${percent}%`;
+                    updateSeekbar();
+                } else {
+                    preventDefault = false; 
+                }
+            }
+
+            if(preventDefault) e.preventDefault();
+            if(notifyMsg) showNotifier(notifyMsg);
+        });
+        
+        loadCustomUrlBtn?.addEventListener('click',()=>{
+            const url = customUrlInput?.value.trim();
+            if(url){
+                showNotifier(`Loading: ${url.length > 40 ? url.substring(0,37)+'...' : url}`); 
+                videoSrc=url; 
+                loadMedia(); 
+                if(customUrlInput) customUrlInput.value=''; 
+            } else {
+                showNotifier("Please enter a valid URL.");
+            }
+        });
+        customUrlInput?.addEventListener('keypress',(e)=>{
+            if(e.key==='Enter' && loadCustomUrlBtn) {
+                e.preventDefault(); 
+                loadCustomUrlBtn.click();
+            }
+        });
+
+        // --- Offline/Online Handling ---
+        function handleOffline() {
+            if (wasOffline) return; 
+            wasOffline = true;
+            showNotifier("You are offline. Playback may be limited.");
+        }
+        function handleOnline() {
+            if (!wasOffline) return; 
+            wasOffline = false;
+            showNotifier("You are back online.");
+            if (video && (mediaErrorState?.isNetworkOrPlaybackError || (hls && hls.streamController && hls.streamController.state === 'ERROR'))) {
+                showNotifier("Attempting to resume playback...");
+                loadMedia(); 
+            } else if (video && video.paused && video.readyState >= video.HAVE_FUTURE_DATA && !mediaErrorState) {
+            }
+        }
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
+
+        // --- Initialisation ---
+        function setAccentColorRGB(){ 
+            if (!document.documentElement) return;
+            const rootStyle = getComputedStyle(document.documentElement);
+            
+            const primaryColor = rootStyle.getPropertyValue('--md-sys-color-primary').trim();
+            let primaryRgbValues = '';
+            if (primaryColor.startsWith('#')) {
+                const h = primaryColor.substring(1).toLowerCase(); 
+                if (h.length === 3) { primaryRgbValues = `${parseInt(h[0]+h[0],16)},${parseInt(h[1]+h[1],16)},${parseInt(h[2]+h[2],16)}`;}
+                else if (h.length === 6) { primaryRgbValues = `${parseInt(h.substring(0,2),16)},${parseInt(h.substring(2,4),16)},${parseInt(h.substring(4,6),16)}`;}
+            } else if (primaryColor.startsWith('rgb')) { 
+                const p = primaryColor.match(/\d+/g); if (p && p.length >=3) primaryRgbValues = `${p[0]},${p[1]},${p[2]}`;
+            }
+            if (primaryRgbValues) document.documentElement.style.setProperty('--md-sys-color-primary-rgb', primaryRgbValues);
+            else console.warn("Could not parse --md-sys-color-primary for RGB conversion:", primaryColor);
+
+            const onSurfaceColor = rootStyle.getPropertyValue('--md-sys-color-on-surface').trim();
+            let onSurfaceRgbValues = '';
+            if (onSurfaceColor.startsWith('#')) {
+                const h = onSurfaceColor.substring(1).toLowerCase(); 
+                if (h.length === 3) { onSurfaceRgbValues = `${parseInt(h[0]+h[0],16)},${parseInt(h[1]+h[1],16)},${parseInt(h[2]+h[2],16)}`;}
+                else if (h.length === 6) { onSurfaceRgbValues = `${parseInt(h.substring(0,2),16)},${parseInt(h.substring(2,4),16)},${parseInt(h.substring(4,6),16)}`;}
+            } else if (onSurfaceColor.startsWith('rgb')) { 
+                const p = onSurfaceColor.match(/\d+/g); if (p && p.length >=3) onSurfaceRgbValues = `${p[0]},${p[1]},${p[2]}`;
+            }
+            if (onSurfaceRgbValues) document.documentElement.style.setProperty('--md-sys-color-on-surface-rgb', onSurfaceRgbValues);
+            else console.warn("Could not parse --md-sys-color-on-surface for RGB conversion:", onSurfaceColor);
+        }
+        
+        function initPlayer() {
+            if (!video) { console.error("Video player element (#video) not found."); return; }
+            
+            setAccentColorRGB(); 
+            video.volume = lastVolume; 
+            
+            updatePlayPauseUI(); 
+            updateFullscreenUI(); 
+            updateVolumeUI(); 
+            updatePipButtonUI(); 
+            updateLoopToggleUI(); 
+            updateSpeedIndicator();
+
+            if (speedMenu) { 
+                speedMenu.querySelectorAll('.menu-item').forEach(el => {el.classList.remove('selected'); el.setAttribute('aria-checked', 'false');});
+                const defaultSpeedItem = speedMenu.querySelector('.menu-item[data-speed="1"]'); 
+                if (defaultSpeedItem) { defaultSpeedItem.classList.add('selected'); defaultSpeedItem.setAttribute('aria-checked', 'true');}
+            }
+            
+            if (navigator.onLine === false) { 
+                handleOffline();
+            }
+
+            loadMedia(); 
+            showPlayerControls(true); 
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initPlayer);
+        } else {
+            initPlayer(); 
+        }
+
+    })();
+    </script>
+</body>
+</html>
