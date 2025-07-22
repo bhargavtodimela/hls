@@ -507,7 +507,7 @@
             box-shadow: 0 0 0 6px var(--player-seekbar-thumb-halo);
         }
         
-        /* Settings Menus (Speed, Quality, Stats) */
+        /* Settings Menus (Speed, Quality, Audio, Stats) */
         .control-popup-container {
             position: relative;
             flex-shrink: 0;
@@ -589,9 +589,10 @@
             margin-right: 8px; /* Maintain space even if hidden */
         }
 
-        /* Checkmark adjustments for quality and speed */
+        /* Checkmark adjustments for quality, speed, and audio */
          .menu-item[data-level="-1"][aria-checked="true"] .material-icons, 
-         .menu-item[data-speed="1"][aria-checked="true"] .material-icons { 
+         .menu-item[data-speed="1"][aria-checked="true"] .material-icons,
+         .menu-item[data-track-id="-1"][aria-checked="true"] .material-icons { 
             visibility: visible; /* Show checkmark for "Auto" and "Normal" */
          }
 
@@ -839,7 +840,7 @@
         }
 
         @media (max-width: 550px) { /* Further adjusted breakpoint */
-             #pipBtn, #loopBtn, #qualityBtn { /* Hide more buttons aggressively */
+             #pipBtn, #loopBtn, #qualityBtn, #audioTracksBtn { /* Hide more buttons aggressively */
                  display: none !important; 
             }
             .custom-url-loader {
@@ -920,9 +921,19 @@
                     <div style="flex-grow: 1;"></div> <!-- Spacer -->
 
                     <div class="control-popup-container">
-                        <button id="qualityBtn" class="btn" aria-label="Quality settings" aria-haspopup="true" aria-expanded="false" aria-controls="qualityMenu" title="Quality">
+                        <button id="audioTracksBtn" class="btn" aria-label="Audio tracks settings" aria-haspopup="true" aria-expanded="false" aria-controls="audioTracksMenu" title="Audio Tracks (a)">
+                            <span class="material-icons">audiotrack</span>
+                            <span class="control-tooltip">Audio Tracks (a)</span>
+                        </button>
+                        <div id="audioTracksMenu" class="control-popup menu" role="menu" aria-labelledby="audioTracksBtn" aria-hidden="true" tabindex="-1">
+                            <!-- Audio track options populated by JS -->
+                        </div>
+                    </div>
+
+                    <div class="control-popup-container">
+                        <button id="qualityBtn" class="btn" aria-label="Quality settings" aria-haspopup="true" aria-expanded="false" aria-controls="qualityMenu" title="Quality (t)">
                             <span class="material-icons">hd</span> <!-- Changed to HD icon for quality -->
-                            <span class="control-tooltip">Quality</span>
+                            <span class="control-tooltip">Quality (t)</span>
                         </button>
                         <div id="qualityMenu" class="control-popup menu" role="menu" aria-labelledby="qualityBtn" aria-hidden="true" tabindex="-1">
                             <!-- Quality options populated by JS -->
@@ -930,10 +941,10 @@
                     </div>
                     
                     <div class="control-popup-container">
-                        <button id="speedBtn" class="btn" aria-label="Playback speed settings" aria-haspopup="true" aria-expanded="false" aria-controls="speedMenu" title="Speed">
+                        <button id="speedBtn" class="btn" aria-label="Playback speed settings" aria-haspopup="true" aria-expanded="false" aria-controls="speedMenu" title="Speed (d)">
                             <span class="material-icons">speed</span> <!-- New speed icon -->
                             <span id="speedIndicator" class="speed-indicator">1x</span>
-                            <span class="control-tooltip">Speed</span>
+                            <span class="control-tooltip">Speed (d)</span>
                         </button>
                         <div id="speedMenu" class="control-popup menu" role="menu" aria-labelledby="speedBtn" aria-hidden="true" tabindex="-1">
                             <div class="menu-item" role="menuitemradio" data-speed="0.25" aria-checked="false" tabindex="0"><span class="material-icons">check</span>0.25x</div>
@@ -1020,6 +1031,9 @@
         const qualityBtn = document.getElementById('qualityBtn');
         const qualityMenu = document.getElementById('qualityMenu');
 
+        const audioTracksBtn = document.getElementById('audioTracksBtn');
+        const audioTracksMenu = document.getElementById('audioTracksMenu');
+
         const nerdStatsBtn = document.getElementById('nerdStatsBtn');
         const nerdStatsOverlay = document.getElementById('nerdStatsOverlay');
         
@@ -1044,13 +1058,14 @@
         let hls = null;
         let isSpeedMenuOpen = false;
         let isQualityMenuOpen = false;
-        let isNerdStatsOpen = false; // New state variable for nerd stats
+        let isAudioTracksMenuOpen = false; // New state for audio tracks menu
+        let isNerdStatsOpen = false; 
         let lastVolume = 0.8; 
-        let activeMenu = null; // Can be speedMenu or qualityMenu
+        let activeMenu = null; // Can be speedMenu, qualityMenu, or audioTracksMenu
         let isSeeking = false;
         let wasOffline = !navigator.onLine;
         let mediaErrorState = null; 
-        let nerdStatsInterval = null; // Interval for updating nerd stats
+        let nerdStatsInterval = null; 
 
         // --- Helper Functions ---
         function showNotifier(msg, duration = 2500) { 
@@ -1240,7 +1255,7 @@
         function hidePlayerControls() {
             if (!controlsOverlay || !playerContainer || !video) return;
             // Don't hide if: video paused, a menu is open, volume slider active, or mouse is hovering over interactive parts
-            if (video.paused || activeMenu || isSpeedMenuOpen || isQualityMenuOpen || isNerdStatsOpen ||
+            if (video.paused || activeMenu || isSpeedMenuOpen || isQualityMenuOpen || isAudioTracksMenuOpen || isNerdStatsOpen ||
                 (volumeSliderWrapper && volumeSliderWrapper.classList.contains('active')) ||
                 document.querySelector('.btn:hover, .menu-item:hover, input[type="range"]:hover, .control-popup.menu:hover, .volume-slider-wrapper:hover')
             ) {
@@ -1324,7 +1339,7 @@
             if(!video.muted && video.volume > 0.01) { 
                 lastVolume = video.volume;
             }
-            updateVolumeUI();
+            updateVolumeUI(); 
         }
 
         function togglePip() {
@@ -1361,6 +1376,7 @@
                     if (activeBtn) activeBtn.setAttribute('aria-expanded', 'false');
                     if (activeMenu === speedMenu) isSpeedMenuOpen = false;
                     if (activeMenu === qualityMenu) isQualityMenuOpen = false;
+                    if (activeMenu === audioTracksMenu) isAudioTracksMenuOpen = false;
                 }
                 if (volumeSliderWrapper?.classList.contains('active')) { 
                     volumeSliderWrapper.classList.remove('active');
@@ -1392,7 +1408,7 @@
             }
         }
         
-        // --- Quality & Speed Logic ---
+        // --- Quality, Speed & Audio Logic ---
         function populateAndSetQualityMenu(manifestLevels) {
             if(!qualityMenu || !qualityBtn || !hls) return;
             qualityMenu.innerHTML = ''; 
@@ -1467,6 +1483,90 @@
             const qualityLabel = clickedItem.textContent.replace('check', '').trim().split(' (')[0]; // Remove "check" and trim
             showNotifier(`Quality set to ${qualityLabel}`); 
         }
+
+        function populateAndSetAudioTracksMenu(audioTracks) {
+            if (!audioTracksMenu || !audioTracksBtn || !hls) return;
+            audioTracksMenu.innerHTML = ''; // Clear existing items
+
+            // If only one audio track, hide the button
+            if (audioTracks.length <= 1) {
+                audioTracksBtn.style.display = 'none';
+                return;
+            }
+            audioTracksBtn.style.display = 'flex';
+
+            // Add "Auto" option
+            const autoItem = document.createElement('div');
+            autoItem.className = 'menu-item';
+            autoItem.setAttribute('role', 'menuitemradio');
+            autoItem.dataset.trackId = "-1"; // HLS.js uses -1 for auto
+            autoItem.textContent = "Auto";
+            autoItem.setAttribute('aria-checked', 'false');
+            autoItem.setAttribute('tabindex', '0');
+            autoItem.innerHTML = `<span class="material-icons">check</span>Auto`;
+            autoItem.addEventListener('click', (e) => { createRipple(e); selectAudioTrack(autoItem, -1); });
+            audioTracksMenu.appendChild(autoItem);
+
+            audioTracks.forEach((track, index) => {
+                const item = document.createElement('div');
+                item.className = 'menu-item';
+                item.setAttribute('role', 'menuitemradio');
+                item.setAttribute('aria-checked', 'false');
+                item.dataset.trackId = track.id.toString(); // Use the actual track ID from HLS.js
+                item.setAttribute('tabindex', '0');
+
+                // Determine display label (label, language, or default)
+                let trackLabel = track.name || track.label || track.lang || `Track ${index + 1}`;
+                item.innerHTML = `<span class="material-icons">check</span>${trackLabel}`;
+                item.addEventListener('click', (e) => { createRipple(e); selectAudioTrack(item, track.id); });
+                audioTracksMenu.appendChild(item);
+            });
+            
+            // Set initial selection
+            updateAudioTrackSelectionUI(hls.audioTrack); // hls.audioTrack gives current track ID [15]
+        }
+
+        function selectAudioTrack(clickedItem, trackId) {
+            if (!hls || !audioTracksMenu) return;
+
+            hls.audioTrack = trackId; // Set the audio track by ID [15]
+
+            // Update UI
+            updateAudioTrackSelectionUI(trackId);
+
+            const trackLabel = clickedItem.textContent.replace('check', '').trim();
+            showNotifier(`Audio track set to ${trackLabel}`);
+            toggleMenu(audioTracksMenu, audioTracksBtn, 'isAudioTracksMenuOpen');
+        }
+
+        function updateAudioTrackSelectionUI(selectedTrackId) {
+            if (!audioTracksMenu) return;
+            audioTracksMenu.querySelectorAll('.menu-item').forEach(el => {
+                el.classList.remove('selected');
+                el.setAttribute('aria-checked', 'false');
+            });
+
+            let activeItem;
+            if (selectedTrackId === -1) {
+                activeItem = audioTracksMenu.querySelector(`.menu-item[data-track-id="-1"]`);
+            } else {
+                 // Find by actual HLS track ID
+                 activeItem = Array.from(audioTracksMenu.querySelectorAll('.menu-item'))
+                                .find(item => hls.audioTracks.find(t => t.id === selectedTrackId && t.id.toString() === item.dataset.trackId));
+            }
+            
+            if (activeItem) {
+                activeItem.classList.add('selected');
+                activeItem.setAttribute('aria-checked', 'true');
+            } else {
+                 // Fallback to selecting "Auto" if no explicit match (e.g., initial load or browser default)
+                const autoItem = audioTracksMenu.querySelector('.menu-item[data-track-id="-1"]');
+                if (autoItem) {
+                    autoItem.classList.add('selected');
+                    autoItem.setAttribute('aria-checked', 'true');
+                }
+            }
+        }
         
         // --- Media Loading & Reset ---
         function resetPlayerStateForNewUrl() {
@@ -1496,11 +1596,19 @@
                 const autoItem = qualityMenu.querySelector('.menu-item[data-level="-1"]');
                 if(autoItem) autoItem.addEventListener('click', (e) => { createRipple(e); selectQualityLevel(autoItem, -1);});
             }
+            // Reset audio tracks menu
+            if(audioTracksBtn) audioTracksBtn.style.display = 'none';
+            if(audioTracksMenu) {
+                audioTracksMenu.innerHTML = '<div class="menu-item selected" role="menuitemradio" aria-checked="true" data-track-id="-1" tabindex="0"><span class="material-icons">check</span>Auto</div>';
+                const autoItem = audioTracksMenu.querySelector('.menu-item[data-track-id="-1"]');
+                if(autoItem) autoItem.addEventListener('click', (e) => { createRipple(e); selectAudioTrack(autoItem, -1);});
+            }
             
             // Close any open menus
             if (isQualityMenuOpen && qualityMenu && qualityBtn) toggleMenu(qualityMenu, qualityBtn, 'isQualityMenuOpen');
             if (isSpeedMenuOpen && speedMenu && speedBtn) toggleMenu(speedMenu, speedBtn, 'isSpeedMenuOpen');
-            if (isNerdStatsOpen) toggleNerdStats(); // Close nerd stats
+            if (isAudioTracksMenuOpen && audioTracksMenu && audioTracksBtn) toggleMenu(audioTracksMenu, audioTracksBtn, 'isAudioTracksMenuOpen');
+            if (isNerdStatsOpen) toggleNerdStats(); 
 
             video.playbackRate = 1; 
             updateSpeedIndicator();
@@ -1538,6 +1646,16 @@
                     showNotifier('Video ready to play'); 
                     clearError(); 
                 });
+                hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, (event, data) => { // New: Audio tracks updated [2, 11]
+                    populateAndSetAudioTracksMenu(data.audioTracks); 
+                });
+                hls.on(Hls.Events.AUDIO_TRACK_SWITCHED, (event, data) => { // New: Audio track switched [2, 3]
+                    updateAudioTrackSelectionUI(data.id);
+                    const currentTrack = hls.audioTracks.find(t => t.id === data.id);
+                    const trackLabel = currentTrack ? (currentTrack.name || currentTrack.label || currentTrack.lang || `Track ${data.id + 1}`) : 'Auto';
+                    showNotifier(`Audio: ${trackLabel}`);
+                });
+
                 hls.on(Hls.Events.ERROR, (event, data) => {
                   console.error('HLS Error:', data); 
                   let msg = `HLS Error (Type: ${data.type}).`;
@@ -1551,7 +1669,8 @@
                     toggleLoading(false); 
                     showError(msg, data.type === Hls.ErrorTypes.NETWORK_ERROR || data.type === Hls.ErrorTypes.MEDIA_ERROR); 
                     if(qualityBtn) qualityBtn.style.display = 'none'; 
-                    if(hls) { hls.destroy(); hls = null; } // Destroy HLS instance on fatal error
+                    if(audioTracksBtn) audioTracksBtn.style.display = 'none'; // Hide audio button on fatal error
+                    if(hls) { hls.destroy(); hls = null; } 
                   } else { 
                     console.warn("Non-fatal HLS Error:", msg); 
                   }
@@ -1577,7 +1696,6 @@
                          if(autoItem) {autoItem.classList.add('selected'); autoItem.setAttribute('aria-checked', 'true');}
                     }
                 });
-                // Capture buffer progress more accurately during HLS loading
                 hls.on(Hls.Events.BUFFER_APPENDED, () => {
                     updateSeekbar(); 
                     if (video.buffered.length > 0 && video.duration > 0 && isFinite(video.duration)) {
@@ -1593,23 +1711,27 @@
               } else if (video.canPlayType('application/vnd.apple.mpegurl') || video.canPlayType('audio/mpegurl')) { 
                 video.src = videoSrc; 
                 if(qualityBtn) qualityBtn.style.display='none';
+                if(audioTracksBtn) audioTracksBtn.style.display='none'; // Hide if native HLS
                 showNotifier('Using native HLS playback'); 
                 clearError();
               } else { 
                 toggleLoading(false); 
                 showError('HLS playback is not supported by your browser or HLS.js could not be loaded.'); 
-                if(qualityBtn) qualityBtn.style.display='none';
+                if(qualityBtn) qualityBtn.style.display='none'; 
+                if(audioTracksBtn) audioTracksBtn.style.display='none';
               }
             } else if (urlLower.endsWith('.mp4') || urlLower.endsWith('.webm') || urlLower.endsWith('.ogv') || 
                        video.canPlayType('video/mp4') || video.canPlayType('video/webm') || video.canPlayType('video/ogg')) { 
               if (hls) { hls.destroy(); hls = null; } 
               if (qualityBtn) qualityBtn.style.display = 'none'; 
+              if (audioTracksBtn) audioTracksBtn.style.display = 'none'; // Hide for MP4
               video.src = videoSrc;
               clearError();
             } else { 
               toggleLoading(false); 
               showError("Unsupported video URL or format.");
               if (qualityBtn) qualityBtn.style.display = 'none';
+              if (audioTracksBtn) audioTracksBtn.style.display = 'none';
             }
         }
 
@@ -1646,8 +1768,8 @@
                 if (hls.stats && hls.stats.buffered) {
                     statsText += `HLS Buffered: ${(hls.stats.buffered.end - hls.stats.buffered.start).toFixed(2)}s\n`;
                 }
-                // Add more HLS.js stats as needed, e.g., current segment, download speed etc.
-                // You can explore `hls.levelController.currentLevel` or `hls.liveSyncController` for more details.
+                const currentAudioTrack = hls.audioTracks.find(t => t.id === hls.audioTrack);
+                statsText += `Audio Track: ${currentAudioTrack ? (currentAudioTrack.label || currentAudioTrack.name || currentAudioTrack.lang) : 'Auto'} (ID: ${hls.audioTrack})\n`;
             }
 
             nerdStatsOverlay.textContent = statsText;
@@ -1669,7 +1791,9 @@
                 if (activeMenu) { 
                     const menuToClose = activeMenu; 
                     const btnForMenu = document.querySelector(`[aria-controls="${menuToClose.id}"]`);
-                    const stateKey = menuToClose === speedMenu ? 'isSpeedMenuOpen' : 'isQualityMenuOpen';
+                    const stateKey = menuToClose === speedMenu ? 'isSpeedMenuOpen' : 
+                                     menuToClose === qualityMenu ? 'isQualityMenuOpen' : 
+                                     'isAudioTracksMenuOpen'; // Added audio tracks
                     if (btnForMenu) toggleMenu(menuToClose, btnForMenu, stateKey); 
                 }
                 if (volumeSliderWrapper?.classList.contains('active')) { 
@@ -1689,7 +1813,7 @@
             if (interactiveElement) interactiveElement.addEventListener('click', createRipple);
         });
         speedMenu?.querySelectorAll('.menu-item').forEach(item => item.addEventListener('click', createRipple));
-        // Ripple for quality menu items is added when they are populated.
+        // Ripple for quality and audio menu items is added when they are populated.
 
 
         playPauseBtn?.addEventListener('click', () => { togglePlayPause(); showPlayerControls(); });
@@ -1702,6 +1826,9 @@
         qualityBtn?.addEventListener('click', () => { 
             if(qualityMenu && qualityBtn) toggleMenu(qualityMenu, qualityBtn, 'isQualityMenuOpen'); 
         });
+        audioTracksBtn?.addEventListener('click', () => { // New: Audio tracks button click
+            if(audioTracksMenu && audioTracksBtn) toggleMenu(audioTracksMenu, audioTracksBtn, 'isAudioTracksMenuOpen');
+        });
         nerdStatsBtn?.addEventListener('click', () => {
             toggleNerdStats();
             showPlayerControls(isNerdStatsOpen); // Keep controls visible if stats are open
@@ -1711,7 +1838,7 @@
             // Only toggle play/pause if click is directly on video AND no menus are open
             if (e.target === video && !activeMenu && !volumeSliderWrapper?.classList.contains('active') &&
                 !isNerdStatsOpen &&
-                !speedMenu?.classList.contains('show') && !qualityMenu?.classList.contains('show') ) { 
+                !speedMenu?.classList.contains('show') && !qualityMenu?.classList.contains('show') && !audioTracksMenu?.classList.contains('show') ) { 
                 togglePlayPause(); 
                 showPlayerControls(); 
             } 
@@ -1727,10 +1854,12 @@
                     if (activeMenu) { 
                         const menuToClose = activeMenu; 
                         const btnForMenu = document.querySelector(`[aria-controls="${menuToClose.id}"]`);
-                        const stateKey = menuToClose === speedMenu ? 'isSpeedMenuOpen' : 'isQualityMenuOpen';
+                        const stateKey = menuToClose === speedMenu ? 'isSpeedMenuOpen' : 
+                                         menuToClose === qualityMenu ? 'isQualityMenuOpen' : 
+                                         'isAudioTracksMenuOpen'; // Added audio tracks
                         if (btnForMenu) toggleMenu(menuToClose, btnForMenu, stateKey); 
                     }
-                    if (isNerdStatsOpen) toggleNerdStats(); // Close nerd stats
+                    if (isNerdStatsOpen) toggleNerdStats(); 
                 } else {
                     showPlayerControls(); 
                 }
@@ -1863,7 +1992,6 @@
             video.addEventListener('canplay', ()=>toggleLoading(false)); 
             video.addEventListener('progress', ()=>{
                 updateSeekbar(); 
-                // Removed redundant progress update here as HLS.Events.BUFFER_APPENDED is now used
             });
             video.addEventListener('error', ()=>{
                 toggleLoading(false);
@@ -1884,6 +2012,7 @@
                 showError(errMsg, isNetworkOrMediaError);
                 if(hls){hls.destroy();hls=null;} 
                 if(qualityBtn)qualityBtn.style.display='none'; 
+                if(audioTracksBtn) audioTracksBtn.style.display='none';
             });
             video.addEventListener('enterpictureinpicture', ()=>{updatePipButtonUI();showNotifier('Entered Picture-in-Picture');});
             video.addEventListener('leavepictureinpicture', ()=>{updatePipButtonUI();showNotifier('Exited Picture-in-Picture');});
@@ -1905,7 +2034,9 @@
             if (activeMenu && !activeMenu.contains(target)) {
                 const controllingButton = document.querySelector(`[aria-controls="${activeMenu.id}"]`);
                 if (controllingButton && !controllingButton.contains(target)) {
-                    const stateKey = activeMenu === speedMenu ? 'isSpeedMenuOpen' : 'isQualityMenuOpen';
+                    const stateKey = activeMenu === speedMenu ? 'isSpeedMenuOpen' : 
+                                     activeMenu === qualityMenu ? 'isQualityMenuOpen' : 
+                                     'isAudioTracksMenuOpen'; // Added audio tracks
                     toggleMenu(activeMenu, controllingButton, stateKey); 
                 }
             }
@@ -2013,7 +2144,9 @@
                 if(activeEl === customUrlInput) { customUrlInput.blur(); preventDefault = true; break;} 
                 if(activeMenu){ 
                     const btnForMenu = document.querySelector(`[aria-controls="${activeMenu.id}"]`);
-                    const stateKey = activeMenu === speedMenu ? 'isSpeedMenuOpen' : 'isQualityMenuOpen';
+                    const stateKey = activeMenu === speedMenu ? 'isSpeedMenuOpen' : 
+                                     activeMenu === qualityMenu ? 'isQualityMenuOpen' : 
+                                     'isAudioTracksMenuOpen'; // Added audio tracks
                     if(btnForMenu) toggleMenu(activeMenu, btnForMenu, stateKey);
                 } else if(volumeSliderWrapper?.classList.contains('active')){ 
                     volumeSliderWrapper.classList.remove('active');
@@ -2034,16 +2167,20 @@
               case'l':
                 toggleLoop();
                 break;
-              case's': // 's' for stats
+              case's': 
                 if (nerdStatsBtn) toggleNerdStats();
                 else preventDefault = false;
                 break;
-              case't': // 't' for quality (if 's' is taken for stats)
+              case't': 
                  if(qualityBtn) qualityBtn.click();
                  else preventDefault = false;
                  break;
-              case'd': // 'd' for speed
+              case'd': 
                 if(speedBtn) speedBtn.click();
+                else preventDefault = false;
+                break;
+              case'a': // New: 'a' for audio tracks
+                if(audioTracksBtn && audioTracksBtn.style.display!=='none') audioTracksBtn.click();
                 else preventDefault = false;
                 break;
               default:
@@ -2148,6 +2285,13 @@
                 speedMenu.querySelectorAll('.menu-item').forEach(el => {el.classList.remove('selected'); el.setAttribute('aria-checked', 'false');});
                 const defaultSpeedItem = speedMenu.querySelector('.menu-item[data-speed="1"]'); 
                 if (defaultSpeedItem) { defaultSpeedItem.classList.add('selected'); defaultSpeedItem.setAttribute('aria-checked', 'true');}
+            }
+            // Initialize audio tracks menu to default hidden state
+            if (audioTracksBtn) audioTracksBtn.style.display = 'none';
+            if (audioTracksMenu) {
+                audioTracksMenu.innerHTML = '<div class="menu-item selected" role="menuitemradio" aria-checked="true" data-track-id="-1" tabindex="0"><span class="material-icons">check</span>Auto</div>';
+                const autoItem = audioTracksMenu.querySelector('.menu-item[data-track-id="-1"]');
+                if(autoItem) autoItem.addEventListener('click', (e) => { createRipple(e); selectAudioTrack(autoItem, -1);});
             }
             
             if (navigator.onLine === false) { 
