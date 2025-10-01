@@ -3,9 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Material Design Video Player</title>
+    <title>Dash-HLS Video Player</title>
+    <meta name="description" content="A HTML5 video player with HLS,DASH,M3U,M3U8 and mp4 streaming support. Also supports playing any online streaming links directly.">
+    <meta name="keywords" content="HTML5 video player, HLS.js, Material Design, streaming, responsive video player">
+    <meta name="author" content="Bhargav">
+    <meta name="robots" content="index, follow">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <!-- Using Google Fonts for Material Icons for better consistency -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
@@ -97,24 +100,24 @@
             padding: 16px;
             user-select: none;
             overflow-x: hidden;
-            font-size: 14px; /* Default body font size */
+            font-size: 14px; 
         }
 
         .player-wrapper {
             width: 90%;
-            max-width: 960px; /* Increased max-width for better desktop experience */
-            margin-bottom: 24px; /* Space for the URL loader */
+            max-width: 960px; 
+            margin-bottom: 24px; 
         }
 
         .player-container {
             position: relative;
             width: 100%;
             background-color: #000000; /* Pure black for video background */
-            border-radius: 12px; /* Slightly more rounded corners */
+            border-radius: 12px;
             box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.3), 0px 12px 24px rgba(0, 0, 0, 0.25); /* Stronger shadow */
             overflow: hidden;
             aspect-ratio: 16 / 9; 
-            display: flex; /* Use flex for video centering/filling in fullscreen */
+            display: flex; 
             align-items: center;
             justify-content: center;
         }
@@ -136,11 +139,11 @@
             height: 100%;
             background-color: #000;
             cursor: pointer; 
-            object-fit: contain; /* Ensure video is fully visible, letterboxing if needed */
+            object-fit: contain; 
         }
         .player-container.fullscreen video#video {
-            flex-grow: 1; /* Allows video to take up available space in fullscreen flex container */
-            object-fit: contain; /* Still contain in fullscreen for aspect ratio */
+            flex-grow: 1; 
+            object-fit: contain; 
         }
 
         /* Controls Overlay */
@@ -149,16 +152,16 @@
             bottom: 0;
             left: 0;
             right: 0;
-            padding: 12px 16px; /* Increased padding */
-            /* Using backdrop-filter for better visibility over bright video content */
-            background: rgba(var(--md-sys-color-surface-rgb), 0.7); /* Base color with opacity */
-            backdrop-filter: blur(8px); /* Apply blur to content behind */
-            -webkit-backdrop-filter: blur(8px); /* WebKit prefix for compatibility */
+            padding: 12px 16px; 
+           
+            background: rgba(var(--md-sys-color-surface-rgb), 0.7); 
+            backdrop-filter: blur(8px); 
+            -webkit-backdrop-filter: blur(8px); 
             transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 21;
             display: flex;
             flex-direction: column;
-            gap: 8px; /* Gap between rows */
+            gap: 8px; 
         }
         .controls-overlay.hidden {
             opacity: 0;
@@ -169,15 +172,15 @@
         .controls-row {
             display: flex;
             align-items: center;
-            gap: 12px; /* Increased gap between controls in a row */
+            gap: 12px;
         }
         
         .btn {
             position: relative;
             overflow: hidden; 
-            width: 48px; /* Material Design standard touch target size */
+            width: 48px;
             height: 48px;
-            padding: 12px; /* Padding for the icon inside the button */
+            padding: 12px; 
             border: none;
             background-color: transparent;
             color: var(--player-icon-color);
@@ -217,13 +220,13 @@
         .ripple {
             position: absolute;
             border-radius: 50%;
-            background-color: rgba(var(--md-sys-color-on-surface-rgb), 0.12); /* Default ripple color (on-surface) */
+            background-color: rgba(var(--md-sys-color-on-surface-rgb), 0.12); 
             transform: scale(0);
             animation: ripple-animation 600ms cubic-bezier(0.25, 0.8, 0.25, 1);
             pointer-events: none;
         }
         .btn-load .ripple { 
-             background-color: rgba(var(--md-sys-color-primary-rgb), 0.2); /* Primary ripple */
+             background-color: rgba(var(--md-sys-color-primary-rgb), 0.2);
         }
 
         @keyframes ripple-animation {
