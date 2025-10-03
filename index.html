@@ -13,7 +13,7 @@
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
         :root {
-            /* Material Design 3 Dark Theme Colors (simplified for primary/secondary) */
+          
             --md-sys-color-primary: #D0BCFF; /* Light purple for accents */
             --md-sys-color-on-primary: #4A009B;
             --md-sys-color-primary-container: #4A009B;
@@ -112,9 +112,9 @@
         .player-container {
             position: relative;
             width: 100%;
-            background-color: #000000; /* Pure black for video background */
+            background-color: #000000; 
             border-radius: 12px;
-            box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.3), 0px 12px 24px rgba(0, 0, 0, 0.25); /* Stronger shadow */
+            box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.3), 0px 12px 24px rgba(0, 0, 0, 0.25); 
             overflow: hidden;
             aspect-ratio: 16 / 9; 
             display: flex; 
@@ -202,7 +202,7 @@
         .btn[aria-pressed="true"] { 
             color: var(--player-icon-active-color);
         }
-        .btn .material-icons { /* Style for Material Icons font */
+        .btn .material-icons {
             font-size: 24px; /* Standard icon size */
             width: 24px; /* Ensure consistent sizing */
             height: 24px;
@@ -273,7 +273,7 @@
             display: flex;
             align-items: center;
             padding: 0 16px; /* Increased padding */
-            margin: 0; /* Remove horizontal margin as it's part of padding now */
+            margin: 0; 
             cursor: pointer;
         }
         input[type="range"].seekbar {
@@ -417,7 +417,7 @@
             transform: translateX(-50%) scaleY(0.8);
             transform-origin: bottom center;
             width: 48px; /* Width same as button for consistency */
-            height: 150px; /* Increased height for better slider range */
+            height: 150px; 
             background-color: var(--md-sys-color-surface-variant); /* Slightly different surface for popups */
             border-radius: 8px; /* More rounded */
             box-shadow: 0 4px 10px rgba(0,0,0,0.3), 0 0 4px rgba(0,0,0,0.2);
@@ -864,7 +864,7 @@
                  transform: translateY(0) translateX(0);
             }
             .time-display {
-                display: none; /* Hide time display on very small screens to save space */
+                display: none; 
             }
         }
 
@@ -885,10 +885,8 @@
             </div>
 
             <div id="errorOverlay" class="error-overlay" aria-hidden="true">
-                <!-- Error message set by JS -->
+             
             </div>
-
-            <!-- Nerd Stats Overlay -->
             <pre id="nerdStatsOverlay" class="nerd-stats-overlay" aria-hidden="true"></pre>
 
             <div id="controlsOverlay" class="controls-overlay">
@@ -942,7 +940,7 @@
                             <span class="control-tooltip">Quality (t)</span>
                         </button>
                         <div id="qualityMenu" class="control-popup menu" role="menu" aria-labelledby="qualityBtn" aria-hidden="true" tabindex="-1">
-                            <!-- Quality options populated by JS -->
+                      
                         </div>
                     </div>
                     
