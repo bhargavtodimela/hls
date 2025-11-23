@@ -1,21 +1,19 @@
 # 🎥 HLS / DASH / MP4 Player
 
 A lightweight web-based video player that supports **HLS**, **DASH**, **M3U**, **M3U8**, and **MP4** streaming formats.  
-Built with a clean UI, custom URL input, and automatic quality switching.
+Originally developed and maintained by **Bhargav (KL University Vijayawada)**.
 
 ---
 
 ## 🚀 Features
 
-- ▶️ Play **HLS (.m3u8)** streams  
-- 🎞️ Play **DASH (.mpd)** streams  
-- 📁 Supports **MP4** direct URLs  
-- 📶 Auto quality detection  
-- 🖥️ Full-screen mode  
+- ▶️ Supports **HLS (.m3u8)**, **DASH (.mpd)**, and **MP4**  
+- 📶 Automatic quality detection  
 - 🔊 Volume control  
-- 🏃 Playback speed control  
-- ⛔ Developer tools restricted (anti-tampering protection)  
-- 🔐 Scripts are **obfuscated** for enhanced security  
+- 🏃 Playback speed adjustment  
+- 🖥️ Full-screen mode  
+- 💡 Clean and minimal UI  
+- 🚫 **No Ads — completely ad-free experience**
 
 ---
 
@@ -25,51 +23,27 @@ Built with a clean UI, custom URL input, and automatic quality switching.
 
 ---
 
-## 📸 Screenshot
-
-*(Replace with your actual screenshot)*  
-![Player Screenshot](./screenshot.png)
-
----
-
 ## 🔧 Usage
 
-1. Open the player in your browser.
-2. Enter a valid streaming URL:
-   - HLS: `https://example.com/stream.m3u8`
-   - DASH: `https://example.com/manifest.mpd`
-   - MP4: `https://example.com/video.mp4`
-3. Click **LOAD**.
-4. Enjoy smooth playback with automatic resolution adjustments.
+1. Open the player in your browser.  
+2. Enter any valid streaming/video URL:
+   - HLS → `https://example.com/stream.m3u8`
+   - DASH → `https://example.com/manifest.mpd`
+   - MP4 → `https://example.com/video.mp4`
+3. Click **LOAD** to start playback.
 
 ---
 
 ## 📁 Supported Formats
 
-| Type | Extension |
-|------|-----------|
+| Type | Extensions |
+|------|------------|
 | HLS | `.m3u8`, `.m3u` |
 | DASH | `.mpd` |
 | MP4 | `.mp4` |
 
 ---
 
-## 🛡️ Security Notes
+## 📜 License
 
-- Developer Tools are restricted to prevent tampering.
-- Core JavaScript is intentionally **obfuscated**.
-- No analytics or tracking scripts are included.
-
----
-
-## 📦 Deployment
-
-This site is deployed on **Vercel**.
-
-To deploy your own version:
-
-```sh
-git clone https://github.com/YOUR-USERNAME/REPO-NAME.git
-cd REPO-NAME
-npm install
-vercel deploy
+MIT License — free to use, modify, and distribute with attribution to **Bhargav**.
